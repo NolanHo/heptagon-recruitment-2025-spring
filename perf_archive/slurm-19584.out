@@ -1,0 +1,52 @@
+Layer 0 :  Elapse time 7666.517337 ms. (    1.42 GFlops) 
+Layer 1 :  Elapse time 20146.292607 ms. (   11.54 GFlops) 
+Layer 2 :  Elapse time 8237.543265 ms. (   13.86 GFlops) 
+Layer 3 :  Elapse time 14564.387004 ms. (   15.68 GFlops) 
+Layer 4 :  Elapse time 6397.421281 ms. (   17.21 GFlops) 
+Layer 5 :  Elapse time 12416.119734 ms. (   17.73 GFlops) 
+Layer 6 :  Elapse time 12562.124332 ms. (   17.52 GFlops) 
+Layer 7 :  Elapse time 12562.192361 ms. (   17.52 GFlops) 
+Layer 8 :  Elapse time 5798.697392 ms. (   17.60 GFlops) 
+Layer 9 :  Elapse time 12357.895613 ms. (   16.52 GFlops) 
+Layer 10:  Elapse time 12364.087979 ms. (   16.51 GFlops) 
+Layer 11:  Elapse time 12354.089022 ms. (   16.52 GFlops) 
+Layer 12:  Elapse time 2317.286332 ms. (   18.77 GFlops) 
+Layer 13:  Elapse time 2309.226036 ms. (   18.83 GFlops) 
+Layer 14:  Elapse time 2308.065335 ms. (   18.84 GFlops) 
+Layer 15:  Elapse time 2310.035706 ms. (   18.83 GFlops) 
+Total elapse time: 146.671981. (   15.31 GFlops) 
+
+ Performance counter stats for './winograd conf/vgg16.conf':
+
+        442,197.30 msec task-clock                #    1.000 CPUs utilized          
+             3,718      context-switches          #    8.408 /sec                   
+                 0      cpu-migrations            #    0.000 /sec                   
+        20,743,393      page-faults               #   46.910 K/sec                  
+ 1,144,807,266,638      cycles                    #    2.589 GHz                      (38.46%)
+ 2,564,974,878,738      instructions              #    2.24  insn per cycle           (46.15%)
+   286,545,116,822      branches                  #  648.003 M/sec                    (53.85%)
+        76,484,097      branch-misses             #    0.03% of all branches          (61.54%)
+ 5,724,381,415,015      slots                     #   12.945 G/sec                    (69.23%)
+   537,882,516,766      topdown-retiring          #      8.8% retiring                (69.23%)
+ 4,422,365,250,030      topdown-bad-spec          #     72.1% bad speculation         (69.23%)
+    44,372,614,372      topdown-fe-bound          #      0.7% frontend bound          (69.23%)
+ 1,131,377,685,818      topdown-be-bound          #     18.4% backend bound           (69.23%)
+ 1,003,381,664,045      L1-dcache-loads           #    2.269 G/sec                    (69.23%)
+   103,748,126,990      L1-dcache-load-misses     #   10.34% of all L1-dcache accesses  (69.23%)
+       330,874,608      LLC-loads                 #  748.251 K/sec                    (69.23%)
+       100,719,147      LLC-load-misses           #   30.44% of all LL-cache accesses  (69.23%)
+   <not supported>      L1-icache-loads                                             
+       338,820,077      L1-icache-load-misses                                         (30.77%)
+ 1,003,771,564,282      dTLB-loads                #    2.270 G/sec                    (30.77%)
+        31,936,417      dTLB-load-misses          #    0.00% of all dTLB cache accesses  (30.77%)
+   <not supported>      iTLB-loads                                                  
+           471,896      iTLB-load-misses                                              (30.77%)
+   <not supported>      L1-dcache-prefetches                                        
+   <not supported>      L1-dcache-prefetch-misses                                   
+
+     442.379535145 seconds time elapsed
+
+     409.803261000 seconds user
+      32.376357000 seconds sys
+
+
