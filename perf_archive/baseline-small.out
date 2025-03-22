@@ -1,3 +1,5 @@
+O3 -> Ofast
+
 Layer 0 :  Elapse time 0.010014 ms. (    1.38 GFlops) 
 Layer 1 :  Elapse time 0.028690 ms. (    2.41 GFlops) 
 Layer 2 :  Elapse time 1.121044 ms. (    2.22 GFlops) 
