@@ -221,6 +221,113 @@ void filter_transform(float *__restrict__ packed_filter,
   }
 }
 
+void output_transform_locality(float *__restrict__ M,
+                         float *__restrict__ Y,
+                         const tiling_info_t ti,
+                         const int64_t collapsed_dim_size) {
+  typedef float (*M_tensor_t)[ti.tile_in_w][collapsed_dim_size];
+  typedef float (*Y_tensor_t)[ti.tile_in_w][collapsed_dim_size];
+  M_tensor_t M_tensor = (M_tensor_t)M;
+  Y_tensor_t Y_tensor = (Y_tensor_t)Y;
+
+  #pragma omp parallel for schedule(static)
+  for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
+
+    float local_M[6][ti.tile_in_w];
+    for (int c = 0; c < 6; c++) {
+      for (int w = 0; w < ti.tile_in_w; w++) {
+        local_M[c][w] = M_tensor[c][w][idx];
+      }
+    }
+
+    float tempH[ti.tile_out_h][ti.tile_in_w];
+    for (int w = 0; w < ti.tile_in_w; w++) {
+      float z0, z1, z2, z3, z4;
+      z4 = local_M[0][w];
+      z0 = z4;
+
+      z4 = local_M[1][w];
+      z0 += z4;
+      z1 = z4;
+      z2 = z4;
+      z3 = z4;
+
+      z4 = local_M[2][w];
+      z0 += z4;
+      z1 += -z4;
+      z2 += z4;
+      z3 += -z4;
+
+      z4 = local_M[3][w];
+      z0 += z4;
+      z1 += 2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += 8.0f * z4;
+
+      z4 = local_M[4][w];
+      z0 += z4;
+      z1 += -2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += -8.0f * z4;
+
+      z4 = local_M[5][w];
+      z3 += z4;
+
+      tempH[0][w] = z0;
+      tempH[1][w] = z1;
+      tempH[2][w] = z2;
+      tempH[3][w] = z3;
+    }
+
+    float local_out[ti.tile_out_h][4];
+    for (int h = 0; h < ti.tile_out_h; h++) {
+      float z0, z1, z2, z3, z4;
+      z4 = tempH[h][0];
+      z0 = z4;
+
+      z4 = tempH[h][1];
+      z0 += z4;
+      z1 = z4;
+      z2 = z4;
+      z3 = z4;
+
+      z4 = tempH[h][2];
+      z0 += z4;
+      z1 += -z4;
+      z2 += z4;
+      z3 += -z4;
+
+      z4 = tempH[h][3];
+      z0 += z4;
+      z1 += 2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += 8.0f * z4;
+
+      z4 = tempH[h][4];
+      z0 += z4;
+      z1 += -2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += -8.0f * z4;
+
+      z4 = tempH[h][5];
+      z3 += z4;
+
+      local_out[h][0] = z0;
+      local_out[h][1] = z1;
+      local_out[h][2] = z2;
+      local_out[h][3] = z3;
+    }
+
+    for (int h = 0; h < ti.tile_out_h; h++) {
+      Y_tensor[h][0][idx] = local_out[h][0];
+      Y_tensor[h][1][idx] = local_out[h][1];
+      Y_tensor[h][2][idx] = local_out[h][2];
+      Y_tensor[h][3][idx] = local_out[h][3];
+    }
+  }
+}
+
+
 void output_transform(float *__restrict__ M,
                       float *__restrict__ Y,
                       const tiling_info_t ti,
@@ -339,6 +446,139 @@ void filter_packing(float *__restrict__ filter, float *__restrict__ packed_filte
           packed_filter_tensor[h][w][oc][ic] = filter_tensor[oc][ic][h][w];
 }
 
+void image_packing_and_transform_pipelined(float *__restrict__ image,
+                                            float *__restrict__ V,
+                                            const image_shape_t is,
+                                            const V_shape_t vs,
+                                            const tiling_info_t ti) {
+  int64_t collapsed_dim_size = vs.ic * ti.num_tiles;
+
+  typedef float (*V_tensor_t)[6][collapsed_dim_size];
+  V_tensor_t V_tensor = (V_tensor_t)V;
+
+  typedef float (*image_tensor_t)[is.ic][is.h][is.w];
+  image_tensor_t image_tensor = (image_tensor_t)image;
+
+  #pragma omp parallel for collapse(2) schedule(static)
+  for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
+    for (int64_t ic = 0; ic < is.ic; ic++) {
+      int64_t idx = tile * is.ic + ic;
+      tile_index_t tidx = get_tile_index(tile, ti);
+      int batch = tidx.b;
+      int base_h = tidx.th * 4;
+      int base_w = tidx.tw * 4;
+
+      float local_tile[ti.tile_in_h][ti.tile_in_w];
+      for (int h = 0; h < ti.tile_in_h; h++) {
+        for (int w = 0; w < ti.tile_in_w; w++) {
+          int img_h = base_h + h;
+          int img_w = base_w + w;
+          if (img_h < is.h && img_w < is.w)
+            local_tile[h][w] = image_tensor[batch][ic][img_h][img_w];
+          else
+            local_tile[h][w] = 0.0f;
+        }
+      }
+
+      float V_local[ti.tile_in_h][ti.tile_in_w];
+      for (int w = 0; w < ti.tile_in_w; w++) {
+        float z0, z1, z2, z3, z4, z5, z6;
+        z6 = local_tile[0][w];
+        z0 = 4.0f * z6;
+
+        z6 = local_tile[1][w];
+        z1 = -4.0f * z6;
+        z2 = 4.0f * z6;
+        z3 = -2.0f * z6;
+        z4 = 2.0f * z6;
+        z5 = 4.0f * z6;
+
+        z6 = local_tile[2][w];
+        z0 += -5.0f * z6;
+        z1 += -4.0f * z6;
+        z2 += -4.0f * z6;
+        z3 += -z6;
+        z4 += -z6;
+
+        z6 = local_tile[3][w];
+        z1 += z6;
+        z2 += -z6;
+        z3 += 2.0f * z6;
+        z4 += -2.0f * z6;
+        z5 += -5.0f * z6;
+
+        z6 = local_tile[4][w];
+        z0 += z6;
+        z1 += z6;
+        z2 += z6;
+        z3 += z6;
+        z4 += z6;
+
+        z6 = local_tile[5][w];
+        z5 += z6;
+
+        V_local[0][w] = z0;
+        V_local[1][w] = z1;
+        V_local[2][w] = z2;
+        V_local[3][w] = z3;
+        V_local[4][w] = z4;
+        V_local[5][w] = z5;
+      }
+
+      float final_tile[ti.tile_in_h][6];
+      for (int h = 0; h < ti.tile_in_h; h++) {
+        float z0, z1, z2, z3, z4, z5, z6;
+        z6 = V_local[h][0];
+        z0 = 4.0f * z6;
+
+        z6 = V_local[h][1];
+        z1 = -4.0f * z6;
+        z2 = 4.0f * z6;
+        z3 = -2.0f * z6;
+        z4 = 2.0f * z6;
+        z5 = 4.0f * z6;
+
+        z6 = V_local[h][2];
+        z0 += -5.0f * z6;
+        z1 += -4.0f * z6;
+        z2 += -4.0f * z6;
+        z3 += -z6;
+        z4 += -z6;
+
+        z6 = V_local[h][3];
+        z1 += z6;
+        z2 += -z6;
+        z3 += 2.0f * z6;
+        z4 += -2.0f * z6;
+        z5 += -5.0f * z6;
+
+        z6 = V_local[h][4];
+        z0 += z6;
+        z1 += z6;
+        z2 += z6;
+        z3 += z6;
+        z4 += z6;
+
+        z6 = V_local[h][5];
+        z5 += z6;
+
+        final_tile[h][0] = z0;
+        final_tile[h][1] = z1;
+        final_tile[h][2] = z2;
+        final_tile[h][3] = z3;
+        final_tile[h][4] = z4;
+        final_tile[h][5] = z5;
+      }
+
+      for (int h = 0; h < ti.tile_in_h; h++) {
+        for (int col = 0; col < 6; col++) {
+          V_tensor[h][col][idx] = final_tile[h][col];
+        }
+      }
+    } 
+  }
+}
+
 void image_packing(float *__restrict__ image,
                    float *__restrict__ packed_image,
                    const image_shape_t is,
@@ -387,6 +627,49 @@ void image_packing(float *__restrict__ image,
   }
 }
 
+void output_unpacking_store_locality(float *__restrict__ Y,
+                               float *__restrict__ out,
+                               const out_shape_t os,
+                               const tiling_info_t ti) {
+  typedef float (*Y_tensor_t)[ti.tile_in_w][os.oc][ti.num_tiles];
+  typedef float (*out_tensor_t)[os.oc][os.h][os.w];
+
+  Y_tensor_t Y_tensor = (Y_tensor_t)Y;
+  out_tensor_t out_tensor = (out_tensor_t)out;
+
+  // pre compute tile index
+  tile_index_t *tile_map = (tile_index_t *)malloc(ti.num_tiles * sizeof(tile_index_t));
+  #pragma omp parallel for schedule(static)
+  for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
+      tile_map[tile] = get_tile_index(tile, ti);
+  }
+
+  #pragma omp parallel for collapse(3) schedule(static)
+  for (int64_t h = 0; h < ti.tile_out_h; ++h) {
+    for (int64_t w = 0; w < ti.tile_out_w; ++w) {
+      for (int64_t oc = 0; oc < os.oc; ++oc) {
+        float local_tile[ti.num_tiles];
+        for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
+          local_tile[tile] = Y_tensor[h][w][oc][tile];
+        }
+
+        #pragma omp simd
+        for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
+          tile_index_t tidx = tile_map[tile];
+          int64_t batch = tidx.b;
+          int64_t out_h = tidx.th * 4 + h;
+          int64_t out_w = tidx.tw * 4 + w;
+          if (out_h < os.h && out_w < os.w){
+            out_tensor[batch][oc][out_h][out_w] = local_tile[tile];
+          }
+        }
+      }
+    }
+  }
+
+  free(tile_map);
+}
+
 void output_unpacking_store(float *__restrict__ Y,
                             float *__restrict__ out,
                             const out_shape_t os,
@@ -428,6 +711,133 @@ void output_unpacking_store(float *__restrict__ Y,
       }
     }
   }
+}
+
+void output_pipelined(float *__restrict__ M,
+                      float *__restrict__ out,
+                      const out_shape_t os,
+                      const tiling_info_t ti) {
+  int64_t collapsed_dim_size = os.oc * ti.num_tiles;
+
+  typedef float (*M_tensor_t)[ti.tile_in_w][collapsed_dim_size];
+  M_tensor_t M_tensor = (M_tensor_t) M;
+
+  typedef float (*out_tensor_t)[os.oc][os.h][os.w];
+  out_tensor_t out_tensor = (out_tensor_t) out;
+
+  // pre compute tile index
+  tile_index_t *tile_map = (tile_index_t *)malloc(ti.num_tiles * sizeof(tile_index_t));
+  #pragma omp parallel for schedule(static)
+  for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
+    tile_map[tile] = get_tile_index(tile, ti);
+  }
+
+  #pragma omp parallel for schedule(static)
+  for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
+    int oc   = idx / ti.num_tiles;
+    int tile = idx % ti.num_tiles;
+
+    float local_M[6][ti.tile_in_w];
+    for (int c = 0; c < 6; c++) {
+      for (int w = 0; w < ti.tile_in_w; w++) {
+        local_M[c][w] = M_tensor[c][w][idx];
+      }
+    }
+
+    float tempH[ti.tile_out_h][ti.tile_in_w];
+    for (int w = 0; w < ti.tile_in_w; w++) {
+      float z0, z1, z2, z3, z4;
+      z4 = local_M[0][w];
+      z0 = z4;
+
+      z4 = local_M[1][w];
+      z0 += z4;
+      z1 = z4;
+      z2 = z4;
+      z3 = z4;
+
+      z4 = local_M[2][w];
+      z0 += z4;
+      z1 += -z4;
+      z2 += z4;
+      z3 += -z4;
+
+      z4 = local_M[3][w];
+      z0 += z4;
+      z1 += 2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += 8.0f * z4;
+
+      z4 = local_M[4][w];
+      z0 += z4;
+      z1 += -2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += -8.0f * z4;
+
+      z4 = local_M[5][w];
+      z3 += z4;
+
+      tempH[0][w] = z0;
+      tempH[1][w] = z1;
+      tempH[2][w] = z2;
+      tempH[3][w] = z3;
+    }
+
+    float local_out[ti.tile_out_h][4];
+    for (int h = 0; h < ti.tile_out_h; h++) {
+      float z0, z1, z2, z3, z4;
+      z4 = tempH[h][0];
+      z0 = z4;
+
+      z4 = tempH[h][1];
+      z0 += z4;
+      z1 = z4;
+      z2 = z4;
+      z3 = z4;
+
+      z4 = tempH[h][2];
+      z0 += z4;
+      z1 += -z4;
+      z2 += z4;
+      z3 += -z4;
+
+      z4 = tempH[h][3];
+      z0 += z4;
+      z1 += 2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += 8.0f * z4;
+
+      z4 = tempH[h][4];
+      z0 += z4;
+      z1 += -2.0f * z4;
+      z2 += 4.0f * z4;
+      z3 += -8.0f * z4;
+
+      z4 = tempH[h][5];
+      z3 += z4;
+
+      local_out[h][0] = z0;
+      local_out[h][1] = z1;
+      local_out[h][2] = z2;
+      local_out[h][3] = z3;
+    }
+
+    tile_index_t tidx = tile_map[tile];
+    int batch = tidx.b;
+    for (int h = 0; h < ti.tile_out_h; h++) {
+      int out_h = tidx.th * ti.tile_out_w + h; 
+      if (out_h >= os.h)
+        continue;
+      for (int w = 0; w < 4; w++) {
+        int out_w = tidx.tw * ti.tile_out_w + w;
+        if (out_w >= os.w)
+          continue;
+        out_tensor[batch][oc][out_h][out_w] = local_out[h][w];
+      }
+    }
+  }
+
+  free(tile_map);
 }
 
 void fused_sgemm(const int64_t tile_in_h,
@@ -523,11 +933,9 @@ void winograd_convolution(
   const V_shape_t vs = get_V_shape(is, ti);
 
   float *packed_filter = (float *)malloc(sizeof(float) * fs.h * fs.w * fs.oc * fs.ic);
-  float *packed_image = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * ti.num_tiles * is.ic);
   float *U = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
   float *V = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
   float *M = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * vs.num_tiles);
-  float *Y = (float *)malloc(sizeof(float) * ti.tile_out_h * ti.tile_in_w * os.oc * ti.num_tiles);
 
   #ifdef DEBUG
     int64_t start_time = current_time_ms();
@@ -543,12 +951,14 @@ void winograd_convolution(
     int64_t filter_transform_time = current_time_ms();
   #endif
 
-  image_packing(image, packed_image, is, ti);
+  // float *packed_image = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * ti.num_tiles * is.ic);
+  // image_packing(image, packed_image, is, ti);
   #ifdef DEBUG
     int64_t image_packing_time = current_time_ms();
   #endif
 
-  image_transform(packed_image, V, vs, ti, vs.ic * vs.num_tiles);
+  // image_transform(packed_image, V, vs, ti, vs.ic * vs.num_tiles);
+  image_packing_and_transform_pipelined(image, V, is, vs, ti);
   #ifdef DEBUG
     int64_t image_transform_time = current_time_ms();  
   #endif
@@ -581,12 +991,15 @@ void winograd_convolution(
     int64_t sgemm_time = current_time_ms();
   #endif
 
-  output_transform(M, Y, ti, us.oc * vs.num_tiles);
+  // float *Y = (float *)malloc(sizeof(float) * ti.tile_out_h * ti.tile_in_w * os.oc * ti.num_tiles);
+
+  // output_transform_locality(M, Y, ti, us.oc * vs.num_tiles);
   #ifdef DEBUG
     int64_t output_transform_time = current_time_ms();
   #endif
 
-  output_unpacking_store(Y, out, os, ti);
+  // output_unpacking_store_locality(Y, out, os, ti);
+  output_pipelined(M, out, os, ti);
   #ifdef DEBUG
     int64_t output_unpacking_store_time = current_time_ms();
   #endif
@@ -606,9 +1019,9 @@ void winograd_convolution(
   #endif
 
   free(packed_filter);
-  free(packed_image);
+  // free(packed_image);
   free(U);
   free(V);
   free(M);
-  free(Y);
+  // free(Y);
 }
