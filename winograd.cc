@@ -424,6 +424,79 @@ void output_transform(float *__restrict__ M,
 
 #define FILTER_PACKING_SMALL_THRESHOLD 1887436818874368
 
+void filter_transform_pipelined(float *__restrict__ filter,
+                                    float *__restrict__ V,
+                                    const filter_shape_t fs,
+                                    const U_shape_t us,
+                                    const int64_t collapsed_dim_size) {
+  typedef float (*filter_tensor_t)[fs.ic][fs.h][fs.w];
+  filter_tensor_t filter_tensor = (filter_tensor_t)filter;
+
+  typedef float (*V_tensor_t)[us.w][collapsed_dim_size];
+  V_tensor_t V_tensor = (V_tensor_t)V;
+
+  #pragma omp parallel for schedule(static)
+  for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
+    int oc = idx / fs.ic;
+    int ic = idx % fs.ic;
+
+    float g[3][3];
+    for (int i = 0; i < fs.h; i++) {
+      for (int j = 0; j < fs.w; j++) {
+        g[i][j] = filter_tensor[oc][ic][i][j];
+      }
+    }
+
+    float U_local[6][3];
+    for (int j = 0; j < fs.w; j++) {
+      float f0 = g[0][j];
+      float f1 = g[1][j];
+      float f2 = g[2][j];
+
+      float u0 = (1.0f / 4.0f) * f0;
+      float u1 = (-1.0f / 6.0f) * f0 + (-1.0f / 6.0f) * f1 + (-1.0f / 6.0f) * f2;
+      float u2 = (-1.0f / 6.0f) * f0 + (1.0f / 6.0f) * f1 + (-1.0f / 6.0f) * f2;
+      float u3 = (1.0f / 24.0f) * f0 + (1.0f / 12.0f) * f1 + (1.0f / 6.0f) * f2;
+      float u4 = (1.0f / 24.0f) * f0 + (-1.0f / 12.0f) * f1 + (1.0f / 6.0f) * f2;
+      float u5 = f2;
+
+      U_local[0][j] = u0;
+      U_local[1][j] = u1;
+      U_local[2][j] = u2;
+      U_local[3][j] = u3;
+      U_local[4][j] = u4;
+      U_local[5][j] = u5;
+    }
+
+    float V_local[6][6];
+    for (int i = 0; i < 6; i++) {
+      float u0 = U_local[i][0];
+      float u1 = U_local[i][1];
+      float u2 = U_local[i][2];
+
+      float v0 = (1.0f / 4.0f) * u0;
+      float v1 = (-1.0f / 6.0f) * u0 + (-1.0f / 6.0f) * u1 + (-1.0f / 6.0f) * u2;
+      float v2 = (-1.0f / 6.0f) * u0 + (1.0f / 6.0f) * u1 + (-1.0f / 6.0f) * u2;
+      float v3 = (1.0f / 24.0f) * u0 + (1.0f / 12.0f) * u1 + (1.0f / 6.0f) * u2;
+      float v4 = (1.0f / 24.0f) * u0 + (-1.0f / 12.0f) * u1 + (1.0f / 6.0f) * u2;
+      float v5 = u2;
+
+      V_local[i][0] = v0;
+      V_local[i][1] = v1;
+      V_local[i][2] = v2;
+      V_local[i][3] = v3;
+      V_local[i][4] = v4;
+      V_local[i][5] = v5;
+    }
+
+    for (int i = 0; i < us.h; i++) {
+      for (int j = 0; j < us.w; j++) {
+        V_tensor[i][j][idx] = V_local[i][j];
+      }
+    }
+  }
+}
+
 void filter_packing(float *__restrict__ filter, float *__restrict__ packed_filter, const filter_shape_t fs) {
   typedef float(*filter_tensor_t)[fs.ic][fs.h][fs.w];
   typedef float(*packed_filter_tensor_t)[fs.w][fs.oc][fs.ic];
@@ -816,10 +889,15 @@ void output_pipelined(float *__restrict__ M,
       z4 = tempH[h][5];
       z3 += z4;
 
-      local_out[h][0] = z0;
-      local_out[h][1] = z1;
-      local_out[h][2] = z2;
-      local_out[h][3] = z3;
+
+
+      // local_out[h][0] = z0;
+      // local_out[h][1] = z1;
+      // local_out[h][2] = z2;
+      // local_out[h][3] = z3;
+      // avx 32 float * 4 = 128
+      __m128 z128 = _mm_setr_ps(z0, z1, z2, z3);
+      _mm_storeu_ps(&local_out[h][0], z128);
     }
 
     tile_index_t tidx = tile_map[tile];
@@ -828,6 +906,7 @@ void output_pipelined(float *__restrict__ M,
       int out_h = tidx.th * ti.tile_out_w + h; 
       if (out_h >= os.h)
         continue;
+      
       for (int w = 0; w < 4; w++) {
         int out_w = tidx.tw * ti.tile_out_w + w;
         if (out_w >= os.w)
@@ -856,14 +935,25 @@ void fused_sgemm(const int64_t tile_in_h,
   V_tensor_t V_tensor = (V_tensor_t)V;
   M_tensor_t M_tensor = (M_tensor_t)M;
 
-  #pragma omp parallel for collapse(4) schedule(static)
+  // 数据观测：num_tiles 很大, M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 64
+
+  #pragma omp parallel for collapse(3) schedule(static)
   for (int64_t h = 0; h < tile_in_h; h++) {
     for (int64_t w = 0; w < tile_in_w; w++) {
       for (int64_t m = 0; m < num_tiles; m++) {
         for (int64_t n = 0; n < oc; n++) {
           float sum = 0.0f;
-          #pragma omp simd reduction(+:sum)
-          for (int64_t k = 0; k < ic; k++) {
+          __m512 vsum = _mm512_setzero_ps();
+          int64_t k = 0;
+          int64_t k_simd_bound = (ic / 16) * 16;
+          for (; k < k_simd_bound; k += 16) {
+            __m512 v_val = _mm512_loadu_ps(&V_tensor[h][w][m][k]);
+            __m512 u_val = _mm512_loadu_ps(&U_tensor[h][w][n][k]);
+            __m512 prod = _mm512_mul_ps(v_val, u_val);
+            vsum = _mm512_add_ps(vsum, prod);
+          }
+          sum += _mm512_reduce_add_ps(vsum);
+          for (; k < ic; k++) {
             sum += V_tensor[h][w][m][k] * U_tensor[h][w][n][k];
           }
           M_tensor[h][w][n][m] = sum;
@@ -932,7 +1022,6 @@ void winograd_convolution(
   const U_shape_t us = get_U_shape(fs, ti);
   const V_shape_t vs = get_V_shape(is, ti);
 
-  float *packed_filter = (float *)malloc(sizeof(float) * fs.h * fs.w * fs.oc * fs.ic);
   float *U = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
   float *V = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
   float *M = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * vs.num_tiles);
@@ -941,12 +1030,14 @@ void winograd_convolution(
     int64_t start_time = current_time_ms();
   #endif
 
-  filter_packing(filter, packed_filter, fs);
+  // float *packed_filter = (float *)malloc(sizeof(float) * fs.h * fs.w * fs.oc * fs.ic);
+  // filter_packing(filter, packed_filter, fs);
   #ifdef DEBUG
     int64_t filter_packing_time = current_time_ms();
   #endif
 
-  filter_transform(packed_filter, U, fs, us, us.oc * us.ic);
+  // filter_transform(packed_filter, U, fs, us, us.oc * us.ic);
+  filter_transform_pipelined(filter, U, fs, us, us.oc * us.ic);
   #ifdef DEBUG
     int64_t filter_transform_time = current_time_ms();
   #endif
@@ -1018,7 +1109,7 @@ void winograd_convolution(
     printf("--------------------------------\n");
   #endif
 
-  free(packed_filter);
+  // free(packed_filter);
   // free(packed_image);
   free(U);
   free(V);
