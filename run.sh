@@ -14,8 +14,10 @@ export OMP_NUM_THREADS=64
 
 # Note: numactl - Control NUMA policy for processes or shared memory, see `man numactl'.`
 # Note: perf-stat - Run a command and gather performance counter statistics, see `man perf stat'.
+export MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,narenas:64"
 
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/small.conf 
+# numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/vgg16.conf
 numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/vgg16.conf
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/test.conf
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/big_hw.conf

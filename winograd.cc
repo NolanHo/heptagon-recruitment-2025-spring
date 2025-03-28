@@ -7,13 +7,20 @@
 #include "utils.h"
 #include <time.h>
 #include <omp.h>
+// #include <jemalloc/jemalloc.h>
 
-#define DEBUG
+// #define DEBUG
 
-int64_t current_time_ms(void) {
+inline int64_t current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t)(ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL);
+}
+
+inline int64_t current_time_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)(ts.tv_sec * 1000000000LL + ts.tv_nsec);
 }
 
 void image_transform(float *__restrict__ packed_image,
@@ -936,7 +943,7 @@ void fused_sgemm(const int64_t tile_in_h,
   M_tensor_t M_tensor = (M_tensor_t)M;
 
   // 数据观测：num_tiles 很大, M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 64
-
+  // TODO: 瓶颈优化
   #pragma omp parallel for collapse(3) schedule(static)
   for (int64_t h = 0; h < tile_in_h; h++) {
     for (int64_t w = 0; w < tile_in_w; w++) {
@@ -1005,6 +1012,51 @@ void sgemm(const int64_t M, const int64_t N, const int64_t K, float *A, float *B
   }
 }
 
+typedef struct {
+  float *ptr;
+  size_t size;
+  int in_use;
+} memory_manager_t;
+
+memory_manager_t memory_manager = {nullptr, 0, 0};
+
+void *my_simple_reuse_malloc(size_t size) {
+  if (memory_manager.in_use == 1) {
+    // 并非多线程，所以不需要考虑线程安全
+    return nullptr;
+  }
+
+  if (memory_manager.ptr == nullptr) {
+    // 第一次分配
+    memory_manager.ptr = (float *)malloc(size);
+    memory_manager.size = size;
+    memory_manager.in_use = 1;
+  }else{
+    // 非第一次分配
+    if (memory_manager.size < size) {
+      memory_manager.ptr = (float *)realloc(memory_manager.ptr, size);
+      memory_manager.size = size;
+    }
+  }
+  return memory_manager.ptr;
+}
+
+void my_simple_reuse_free(void *ptr) {
+  if (ptr == memory_manager.ptr) {
+    memory_manager.in_use = 0;
+  }
+}
+
+
+// 好吧不能改driver.cc，没机会调用了
+void my_simple_memory_real_free(void *ptr) {
+  if (ptr == memory_manager.ptr) {
+    free(memory_manager.ptr);
+    memory_manager.ptr = nullptr;
+    memory_manager.size = 0;
+  }
+}
+
 void winograd_convolution(
     float *__restrict__ image, /**< float [batch_num][input_channel_num][image_height][image_width] */
     const int image_height,
@@ -1022,12 +1074,47 @@ void winograd_convolution(
   const U_shape_t us = get_U_shape(fs, ti);
   const V_shape_t vs = get_V_shape(is, ti);
 
-  float *U = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
-  float *V = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
-  float *M = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * vs.num_tiles);
-
   #ifdef DEBUG
     int64_t start_time = current_time_ms();
+  #endif
+
+  // float *total_memory = (float *)malloc(sizeof(float) * (
+  //   ti.tile_in_h * ti.tile_in_w * us.oc * us.ic +
+  //   ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic +
+  //   ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc
+  // ));
+  float *total_memory = (float *)my_simple_reuse_malloc(sizeof(float) * (
+    ti.tile_in_h * ti.tile_in_w * us.oc * us.ic +
+    ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic +
+    ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc
+  ));
+  float *U = total_memory;
+  float *V = U + ti.tile_in_h * ti.tile_in_w * us.oc * us.ic;
+  float *M = V + ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic;
+
+  // float *U = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
+  // float *V = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
+  // float *M = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc);
+
+  #ifdef DEBUG
+    printf("is: %ld, %ld, %ld, %ld\n", is.bs, is.ic, is.h, is.w);
+    printf("fs: %ld, %ld, %ld, %ld\n", fs.oc, fs.ic, fs.h, fs.w);
+    printf("os: %ld, %ld, %ld\n", os.bs, os.h, os.w);
+    printf("ti: %ld, %ld, %ld\n", ti.tile_in_h, ti.tile_in_w, ti.num_tiles);
+    printf("us: %ld, %ld\n", us.oc, us.ic);
+    printf("vs: %ld, %ld\n", vs.num_tiles, vs.ic);
+    printf("U_tensor size: %ld bytes\n", sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
+    printf("V_tensor size: %ld bytes\n", sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
+    printf("M_tensor size: %ld bytes\n", sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc);
+    printf("total_memory size: %ld bytes\n", sizeof(float) * (
+      ti.tile_in_h * ti.tile_in_w * us.oc * us.ic +
+      ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic +
+      ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc
+    ));
+  #endif
+
+  #ifdef DEBUG
+    int64_t malloc_time = current_time_ms();
   #endif
 
   // float *packed_filter = (float *)malloc(sizeof(float) * fs.h * fs.w * fs.oc * fs.ic);
@@ -1090,14 +1177,30 @@ void winograd_convolution(
   #endif
 
   // output_unpacking_store_locality(Y, out, os, ti);
+  
   output_pipelined(M, out, os, ti);
   #ifdef DEBUG
     int64_t output_unpacking_store_time = current_time_ms();
   #endif
 
+
+  // free(packed_filter);
+  // free(packed_image);
+  // free(U);
+  // free(V);
+  // free(M);
+  // free(total_memory);
+  // free(Y);
+  my_simple_reuse_free(total_memory);
+
+  #ifdef DEBUG
+    int64_t free_time = current_time_ms();
+  #endif
+
   #ifdef DEBUG
     printf("--------------------------------\n");
-    printf("filter_packing_time: %ld, delta: %ldms\n", filter_packing_time, filter_packing_time - start_time);
+    printf("malloc_time: %ld, delta: %ldms\n", malloc_time, malloc_time - start_time);
+    printf("filter_packing_time: %ld, delta: %ldms\n", filter_packing_time, filter_packing_time - malloc_time);
     printf("filter_transform_time: %ld, delta: %ldms\n", filter_transform_time, filter_transform_time - filter_packing_time);
     printf("image_packing_time: %ld, delta: %ldms\n", image_packing_time, image_packing_time - filter_transform_time);
     printf("image_transform_time: %ld, delta: %ldms\n", image_transform_time, image_transform_time - image_packing_time);
@@ -1106,13 +1209,7 @@ void winograd_convolution(
     printf("sgemm_time: %ld, delta: %ldms\n", sgemm_time, sgemm_time - image_transform_time);
     printf("output_transform_time: %ld, delta: %ldms\n", output_transform_time, output_transform_time - sgemm_time);
     printf("output_unpacking_store_time: %ld, delta: %ldms\n", output_unpacking_store_time, output_unpacking_store_time - output_transform_time);
+    printf("free_time: %ld, delta: %ldms\n", free_time, free_time - output_unpacking_store_time);
     printf("--------------------------------\n");
   #endif
-
-  // free(packed_filter);
-  // free(packed_image);
-  free(U);
-  free(V);
-  free(M);
-  // free(Y);
 }
