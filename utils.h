@@ -5,12 +5,15 @@
 #define MIN(A, B) (((A) < (B)) ? (A) : (B))
 #define MAX(A, B) (((A) > (B)) ? (A) : (B))
 
+// 卷积核大小 = 3 x 3
 #define FLT_H 3L
 #define FLT_W 3L
 
+// 输入tile大小 = 6 x 6
 #define TILE_IN_H 6L
 #define TILE_IN_W 6L
 
+// 输出tile大小 = 4 x 4
 #define TILE_OUT_H 4L
 #define TILE_OUT_W 4L
 
