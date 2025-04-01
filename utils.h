@@ -102,9 +102,9 @@ typedef struct {
 inline out_shape_t get_output_shape(image_shape_t is, filter_shape_t fs) {
   out_shape_t os;
   os.bs = is.bs;
-  os.oc = fs.oc;
-  os.h = is.h - fs.h + 1;
-  os.w = is.w - fs.w + 1;
+  os.oc = fs.oc; 
+  os.h = is.h - fs.h + 1; // no padding
+  os.w = is.w - fs.w + 1; // no padding
   return os;
 }
 
@@ -115,10 +115,10 @@ inline tiling_info_t get_tiling_info(image_shape_t is, out_shape_t os) {
   ts.bs = is.bs;
   ts.num_tile_per_image = ts.tiles_on_h * ts.tiles_on_w;
   ts.num_tiles = ts.num_tile_per_image * ts.bs;
-  ts.tile_in_h = TILE_IN_H;
-  ts.tile_in_w = TILE_IN_W;
-  ts.tile_out_h = TILE_OUT_H;
-  ts.tile_out_w = TILE_OUT_W;
+  ts.tile_in_h = TILE_IN_H; // 6
+  ts.tile_in_w = TILE_IN_W; // 6
+  ts.tile_out_h = TILE_OUT_H; // 4
+  ts.tile_out_w = TILE_OUT_W; // 4
   return ts;
 }
 
