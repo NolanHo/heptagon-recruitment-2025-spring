@@ -571,9 +571,9 @@ void sgemm(const int64_t num_tiles, const int64_t ic, const int64_t oc, float *A
 
 void V_rev_sgemm(const tiling_info_t ti,
                  const filter_shape_t fs,
-                 float *U,  
-                 float *V,
-                 float *M) {
+                 float * __restrict__ U,  
+                 float * __restrict__ V,
+                 float*  __restrict__ M) {
   typedef float (*U_tensor_t)[ti.tile_in_w][fs.oc][fs.ic];
   typedef float (*V_tensor_t)[ti.tile_in_w][fs.ic][ti.num_tiles];
   typedef float (*M_tensor_t)[ti.tile_in_w][fs.oc][ti.num_tiles];
@@ -581,6 +581,7 @@ void V_rev_sgemm(const tiling_info_t ti,
   U_tensor_t U_tensor = (U_tensor_t)U;
   V_tensor_t V_tensor = (V_tensor_t)V;
   M_tensor_t M_tensor = (M_tensor_t)M;
+
   // filter_shape_t: {oc: 64, ic: 3, h: 3, w: 3}
   // tiling_info_t: {bs: 64, num_tile_per_image: 3136, num_tiles: 200704, tiles_on_h: 56, tiles_on_w: 56,
   // tile_in_h: 6, tile_in_w: 6, tile_out_h: 4, tile_out_w: 4}
@@ -607,27 +608,31 @@ void V_rev_sgemm(const tiling_info_t ti,
 
 
   int64_t start_time = current_time_ms();
-
+  #pragma omp parallel for collapse(4) schedule(static)
   for (int64_t h = 0; h < ti.tile_in_h; h++) {
     for (int64_t w = 0; w < ti.tile_in_w; w++) {
       // sgemm(ti.num_tiles, fs.ic, fs.oc, &V_tensor[h][w][0][0], &U_tensor[h][w][0][0], &M_tensor[h][w][0][0]);
+      // float *base_U = &U_tensor[h][w][0][0];
       for (int64_t oc = 0; oc < fs.oc; oc++) {
-        for (int64_t tile = 0; tile < ti.num_tiles; tile++) {
-          float sum = 0;
-          for (int64_t ic = 0; ic < fs.ic; ic++) {
-            sum += V_tensor[h][w][ic][tile] * U_tensor[h][w][oc][ic];
+        for(int64_t ic = 0; ic < fs.ic; ic++) {
+          float *base_M = &M_tensor[h][w][oc][0];
+          float *base_V = &V_tensor[h][w][ic][0];
+          // float U_val = base_U[oc * fs.ic + ic];
+          float U_val = U_tensor[h][w][oc][ic];
+          #pragma omp simd
+          for(int64_t tile = 0; tile < ti.num_tiles; tile++) {
+            base_M[tile] += base_V[tile] * U_val;
           }
-          M_tensor[h][w][oc][tile] = sum;
         }
       }
     }
   }
 
   int64_t end_time = current_time_ms();
+  printf("tile_in_h X tile_in_w X oc X ic: %ld X %ld X %ld X %ld = %ld\n", 
+         ti.tile_in_h, ti.tile_in_w, fs.oc, fs.ic, ti.tile_in_h * ti.tile_in_w * fs.oc * fs.ic);
   printf("test_sgemm time: %ld ms\n", end_time - start_time);
 }
-
-
 
 void fused_sgemm(const tiling_info_t ti,
                  const filter_shape_t fs,
@@ -660,21 +665,6 @@ void fused_sgemm(const tiling_info_t ti,
   //                DIV_UP(input_image_width - 2, 4) * 
   //                batch_size
   // num_tiles >>> oc
-
-  // print h=0, w=0
-  // int64_t cnt = 0;
-  // for (int64_t idx = 0; idx < ti.num_tiles * fs.ic; idx++) {
-  //   if (V_tensor[0][0][idx][0] != 0) {
-  //     printf("V[0][0][%ld] = %f,", idx, V_tensor[0][0][idx][0]);
-  //     cnt++;
-  //   }
-
-  //   if (cnt > 10){
-  //     break;
-  //   }
-  // }
-  // printf("\n");
-
 
   const int64_t tile_block_size = 64;
   const int64_t oc_block_size = 16;
@@ -720,6 +710,9 @@ void fused_sgemm(const tiling_info_t ti,
   }
 }
 
+// 16GB
+const size_t default_size = 1L << 36;
+
 typedef struct {
   float *ptr;
   size_t size;
@@ -736,13 +729,19 @@ void *my_simple_reuse_malloc(size_t size) {
 
   if (memory_manager.ptr == nullptr) {
     // 第一次分配
-    memory_manager.ptr = (float *)malloc(size);
+    // memory_manager.ptr = (float *)malloc(size);
+    if (size < default_size){
+      size = default_size;
+    }
+    memory_manager.ptr = (float *)aligned_alloc(32, size);
     memory_manager.size = size;
     memory_manager.in_use = 1;
   }else{
     // 非第一次分配
     if (memory_manager.size < size) {
-      memory_manager.ptr = (float *)realloc(memory_manager.ptr, size);
+      // memory_manager.ptr = (float *)realloc(memory_manager.ptr, size);
+      // free(memory_manager.ptr);
+      memory_manager.ptr = (float *)aligned_alloc(32, size);
       memory_manager.size = size;
     }
   }
@@ -885,30 +884,30 @@ void winograd_convolution(
   #endif
 
   // image_transform(packed_image, V, vs, ti, vs.ic * vs.num_tiles);
-  // image_transform(image, V, is, vs, ti);
+  image_transform(image, V, is, vs, ti);
 
   // V_rev: 交换最后两个维度
-  float *V_rev = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
-  image_transform_reverse(image, V_rev, is, vs, ti);
+  // float *V_rev = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
+  // image_transform_reverse(image, V, is, vs, ti);
   // check if v == v_rev
   // V[tile_in_h][tile_in_w][num_tiles][ic]
   // V_rev[tile_in_h][tile_in_w][ic][num_tiles]
-  for (int64_t i = 0; i < ti.tile_in_h; i++) {
-    for (int64_t j = 0; j < ti.tile_in_w; j++) {
-      float *base_v = &V[i * ti.tile_in_w * vs.num_tiles * vs.ic + j * vs.num_tiles * vs.ic];
-      float *base_v_rev = &V_rev[i * ti.tile_in_w * vs.ic * vs.num_tiles + j * vs.ic * vs.num_tiles];
-      for (int64_t k = 0; k < vs.num_tiles; k++) {
-        for (int64_t l = 0; l < vs.ic; l++) {
-          int64_t v_pos = k * vs.ic + l;
-          int64_t v_rev_pos = l * vs.num_tiles + k;
-          // if (base_v[v_pos] != base_v_rev[v_rev_pos]) {
-          //   printf("V[%ld][%ld][%ld][%ld] = %f, V_rev[%ld][%ld][%ld][%ld] = %f\n", i, j, k, l, V[v_pos], i, j, l, k, V_rev[v_rev_pos]);
-          // }
-          base_v[v_pos] = base_v_rev[v_rev_pos];
-        }
-      }
-    }
-  }
+  // for (int64_t i = 0; i < ti.tile_in_h; i++) {
+  //   for (int64_t j = 0; j < ti.tile_in_w; j++) {
+  //     float *base_v = &V[i * ti.tile_in_w * vs.num_tiles * vs.ic + j * vs.num_tiles * vs.ic];
+  //     float *base_v_rev = &V_rev[i * ti.tile_in_w * vs.ic * vs.num_tiles + j * vs.ic * vs.num_tiles];
+  //     for (int64_t k = 0; k < vs.num_tiles; k++) {
+  //       for (int64_t l = 0; l < vs.ic; l++) {
+  //         int64_t v_pos = k * vs.ic + l;
+  //         int64_t v_rev_pos = l * vs.num_tiles + k;
+  //         // if (base_v[v_pos] != base_v_rev[v_rev_pos]) {
+  //         //   printf("V[%ld][%ld][%ld][%ld] = %f, V_rev[%ld][%ld][%ld][%ld] = %f\n", i, j, k, l, V[v_pos], i, j, l, k, V_rev[v_rev_pos]);
+  //         // }
+  //         base_v[v_pos] = base_v_rev[v_rev_pos];
+  //       }
+  //     }
+  //   }
+  // }
 
   #ifdef DEBUG
     int64_t image_transform_time = current_time_ms();  
@@ -918,31 +917,31 @@ void winograd_convolution(
   fused_sgemm(ti, fs, U, V, M);
   // cuda_fused_sgemm(ti, fs, U, V, M);
   
-  float *M2 = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * vs.num_tiles);
-  V_rev_sgemm(ti, fs, U, V_rev, M2);
+  // float *M2 = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * vs.num_tiles);
+  // V_rev_sgemm(ti, fs, U, V, M);
 
 
   // check if M == M2
-  for (int64_t i = 0; i < ti.tile_in_h; i++) {
-    for (int64_t j = 0; j < ti.tile_in_w; j++) {
-      // 获取M和M2在当前位置(i,j)的基址指针，用于比较两个矩阵的值
-      float *base_m = &M[i * ti.tile_in_w * us.oc * vs.num_tiles + j * us.oc * vs.num_tiles];
-      float *base_m2 = &M2[i * ti.tile_in_w * us.oc * vs.num_tiles + j * us.oc * vs.num_tiles];
-      // 遍历输出通道维度
-      for (int64_t k = 0; k < us.oc; k++) {
-        for (int64_t l = 0; l < vs.num_tiles; l++) {
-          int64_t offset = k * vs.num_tiles + l;
-          float diff = std::abs(base_m[offset] - base_m2[offset]);
-          float diff_percent = diff / std::abs(base_m[offset]);
-          if (diff_percent > 1e-2) {
-            printf("M[%ld][%ld][%ld][%ld] = %f, M2[%ld][%ld][%ld][%ld] = %f\n",
-              i, j, k, l, base_m[offset],
-              i, j, k, l, base_m2[offset]);
-          }
-        }
-      }
-    }
-  }
+  // for (int64_t i = 0; i < ti.tile_in_h; i++) {
+  //   for (int64_t j = 0; j < ti.tile_in_w; j++) {
+  //     // 获取M和M2在当前位置(i,j)的基址指针，用于比较两个矩阵的值
+  //     float *base_m = &M[i * ti.tile_in_w * us.oc * vs.num_tiles + j * us.oc * vs.num_tiles];
+  //     float *base_m2 = &M2[i * ti.tile_in_w * us.oc * vs.num_tiles + j * us.oc * vs.num_tiles];
+  //     // 遍历输出通道维度
+  //     for (int64_t k = 0; k < us.oc; k++) {
+  //       for (int64_t l = 0; l < vs.num_tiles; l++) {
+  //         int64_t offset = k * vs.num_tiles + l;
+  //         float diff = std::abs(base_m[offset] - base_m2[offset]);
+  //         float diff_percent = diff / std::abs(base_m[offset]);
+  //         if (diff_percent > 1e-2) {
+  //           printf("M[%ld][%ld][%ld][%ld] = %f, M2[%ld][%ld][%ld][%ld] = %f\n",
+  //             i, j, k, l, base_m[offset],
+  //             i, j, k, l, base_m2[offset]);
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
   #ifdef DEBUG
     int64_t sgemm_time = current_time_ms();
@@ -957,7 +956,7 @@ void winograd_convolution(
   // output_unpacking_store_locality(Y, out, os, ti);
 
   
-  output_transform(M2, out, os, ti);
+  output_transform(M, out, os, ti);
   #ifdef DEBUG
     int64_t output_unpacking_store_time = current_time_ms();
   #endif

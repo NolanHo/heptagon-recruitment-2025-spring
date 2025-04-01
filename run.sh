@@ -17,6 +17,6 @@ export OMP_NUM_THREADS=64
 
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/small.conf 
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/vgg16.conf
-numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/vgg16.conf 
+numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/vgg16.conf
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/test.conf
 # numactl --cpunodebind=0-3 --membind=0-3 perf stat -ddd ./winograd conf/big_hw.conf
