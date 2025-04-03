@@ -8,59 +8,42 @@
 #include <time.h>
 #include <omp.h>
 #include <algorithm>
-// #include <jemalloc/jemalloc.h>
-
+#include "memory.cpp"
 #include "flag.h"
 
+static const float G[6][3] = {
+  {1/4.f, 0.f, 0.f},
+  {-1/6.f, -1/6.f, -1/6.f},
+  {-1/6.f, 1/6.f, -1/6.f},
+  {1/24.f, 1/12.f, 1/6.f},
+  {1/24.f, -1/12.f, 1/6.f},
+  {0.f, 0.f, 1.f},
+};
+static const float GT[3][6] = {
+  {1/4.f, -1/6.f, -1/6.f, 1/24.f, 1/24.f, 0.f},
+  {0.f, -1/6.f, 1/6.f, 1/12.f, -1/12.f, 0.f},
+  {0.f, -1/6.f, -1/6.f, 1/6.f, 1/6.f, 1.f},
+};
 
-inline int64_t current_time_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)(ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL);
-}
-
-inline int64_t current_time_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)(ts.tv_sec * 1000000000LL + ts.tv_nsec);
-}
-
-
-
-void filter_transform(float *__restrict__ filter,
-                      float *__restrict__ V,
-                      const filter_shape_t fs,
-                      const U_shape_t us,
-                      const int64_t collapsed_dim_size) {
-  typedef float (*filter_tensor_t)[fs.ic][fs.h][fs.w];
-  filter_tensor_t filter_tensor = (filter_tensor_t)filter;
-
-  typedef float (*V_tensor_t)[us.w][collapsed_dim_size];
-  V_tensor_t V_tensor = (V_tensor_t)V;
-
-  static const __m128 v1_4      = _mm_set1_ps(1.0f / 4.0f);
-  static const __m128 v_neg1_6  = _mm_set1_ps(-1.0f / 6.0f);
-  static const __m128 v1_6      = _mm_set1_ps(1.0f / 6.0f);
-  static const __m128 v1_24     = _mm_set1_ps(1.0f / 24.0f);
-  static const __m128 v1_12     = _mm_set1_ps(1.0f / 12.0f);
-  static const __m128 v_neg1_12 = _mm_set1_ps(-1.0f / 12.0f);
-
-  #pragma omp parallel for schedule(static)
-  for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
-    int oc     = (int)(idx / fs.ic);
-    int ic_idx = (int)(idx % fs.ic);
-
-    __m128 g0 = _mm_setr_ps(filter_tensor[oc][ic_idx][0][0],
-                            filter_tensor[oc][ic_idx][0][1],
-                            filter_tensor[oc][ic_idx][0][2],
+inline void filter_transform_simd_4x3(float filter[3][3],
+                                      float output[6][6]) {
+    static const __m128 v1_4      = _mm_set1_ps(1.0f / 4.0f);
+    static const __m128 v_neg1_6  = _mm_set1_ps(-1.0f / 6.0f);
+    static const __m128 v1_6      = _mm_set1_ps(1.0f / 6.0f);
+    static const __m128 v1_24     = _mm_set1_ps(1.0f / 24.0f);
+    static const __m128 v1_12     = _mm_set1_ps(1.0f / 12.0f);
+    static const __m128 v_neg1_12 = _mm_set1_ps(-1.0f / 12.0f);
+    __m128 g0 = _mm_setr_ps(filter[0][0],
+                            filter[0][1],
+                            filter[0][2],
                             0.0f);
-    __m128 g1 = _mm_setr_ps(filter_tensor[oc][ic_idx][1][0],
-                            filter_tensor[oc][ic_idx][1][1],
-                            filter_tensor[oc][ic_idx][1][2],
+    __m128 g1 = _mm_setr_ps(filter[1][0],
+                            filter[1][1],
+                            filter[1][2],
                             0.0f);
-    __m128 g2 = _mm_setr_ps(filter_tensor[oc][ic_idx][2][0],
-                            filter_tensor[oc][ic_idx][2][1],
-                            filter_tensor[oc][ic_idx][2][2],
+    __m128 g2 = _mm_setr_ps(filter[2][0],
+                            filter[2][1],
+                            filter[2][2],
                             0.0f);
 
     __m128 U0 = _mm_mul_ps(g0, v1_4);
@@ -93,7 +76,6 @@ void filter_transform(float *__restrict__ filter,
     );
 
     __m128 U5 = g2;
-    float V_local[6][6];
 
     auto transform_row = [&](const __m128 &u, float v[6]) {
       __m128 u0 = _mm_shuffle_ps(u, u, _MM_SHUFFLE(0,0,0,0));
@@ -104,26 +86,26 @@ void filter_transform(float *__restrict__ filter,
       __m128 sum_u = _mm_add_ps(_mm_add_ps(u0, u1), u2);
       __m128 r1 = _mm_mul_ps(sum_u, v_neg1_6);
       __m128 r2 = _mm_add_ps(
-                   _mm_mul_ps(u0, v_neg1_6),
-                   _mm_add_ps(
-                     _mm_mul_ps(u1, v1_6),
-                     _mm_mul_ps(u2, v_neg1_6)
-                   )
-                 );
+                  _mm_mul_ps(u0, v_neg1_6),
+                  _mm_add_ps(
+                    _mm_mul_ps(u1, v1_6),
+                    _mm_mul_ps(u2, v_neg1_6)
+                  )
+                );
       __m128 r3 = _mm_add_ps(
-                   _mm_mul_ps(u0, v1_24),
-                   _mm_add_ps(
-                     _mm_mul_ps(u1, v1_12),
-                     _mm_mul_ps(u2, v1_6)
-                   )
-                 );
+                  _mm_mul_ps(u0, v1_24),
+                  _mm_add_ps(
+                    _mm_mul_ps(u1, v1_12),
+                    _mm_mul_ps(u2, v1_6)
+                  )
+                );
       __m128 r4 = _mm_add_ps(
-                   _mm_mul_ps(u0, v1_24),
-                   _mm_add_ps(
-                     _mm_mul_ps(u1, v_neg1_12),
-                     _mm_mul_ps(u2, v1_6)
-                   )
-                 );
+                  _mm_mul_ps(u0, v1_24),
+                  _mm_add_ps(
+                    _mm_mul_ps(u1, v_neg1_12),
+                    _mm_mul_ps(u2, v1_6)
+                  )
+                );
       __m128 r5 = u2;
 
       v[0] = _mm_cvtss_f32(r0);
@@ -134,92 +116,146 @@ void filter_transform(float *__restrict__ filter,
       v[5] = _mm_cvtss_f32(r5);
     };
 
-    transform_row(U0, V_local[0]);
-    transform_row(U1, V_local[1]);
-    transform_row(U2, V_local[2]);
-    transform_row(U3, V_local[3]);
-    transform_row(U4, V_local[4]);
-    transform_row(U5, V_local[5]);
+    transform_row(U0, output[0]);
+    transform_row(U1, output[1]);
+    transform_row(U2, output[2]);
+    transform_row(U3, output[3]);
+    transform_row(U4, output[4]);
+    transform_row(U5, output[5]);
+}
 
-    for (int i = 0; i < 6; i++) {
-      for (int j = 0; j < 6; j++) {
-        V_tensor[i][j][idx] = V_local[i][j];
+
+void filter_transform(float *__restrict__ filter,
+                      float *__restrict__ V,
+                      const filter_shape_t fs,
+                      const U_shape_t us) {
+  typedef float (*filter_tensor_t)[fs.ic][fs.h][fs.w];
+  filter_tensor_t filter_tensor = (filter_tensor_t)filter;
+  // typedef float (*V_tensor_t)[us.w][collapsed_dim_size];
+  typedef float (*V_tensor_t)[us.w][us.oc][us.ic];
+  V_tensor_t V_tensor = (V_tensor_t)V;
+
+
+  #pragma omp parallel for collapse(2) schedule(static)
+  // for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
+  for (int64_t oc_idx = 0; oc_idx < us.oc; oc_idx++) {
+    for (int64_t ic_idx = 0; ic_idx < us.ic; ic_idx++) {
+      // int oc     = (int)(idx / fs.ic);
+      // int ic_idx = (int)(idx % fs.ic);
+      // float *filter_tensor_base = &filter_tensor[oc_idx][ic_idx][0][0];
+    
+      float output_local[6][6];
+      filter_transform_simd_4x3((float (*)[3])&filter_tensor[oc_idx][ic_idx][0][0], output_local);
+    
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+          V_tensor[i][j][oc_idx][ic_idx] = output_local[i][j];
+        }
       }
     }
   }
 }
 
-inline void image_transform_simd(float local_tile[6][6],
-                                 float final_tile[6][6]) {
-    float V_local[6][6];
-    for (int w = 0; w < 4; w += 4) {
-        __m128 r0 = _mm_loadu_ps(&local_tile[0][w]);
-        __m128 r1 = _mm_loadu_ps(&local_tile[1][w]);
-        __m128 r2 = _mm_loadu_ps(&local_tile[2][w]);
-        __m128 r3 = _mm_loadu_ps(&local_tile[3][w]);
-        __m128 r4 = _mm_loadu_ps(&local_tile[4][w]);
-        __m128 r5 = _mm_loadu_ps(&local_tile[5][w]);
+const static float B[6][6] = {
+    {4.f, 0.f, -5.f, 0.f, 1.f, 0.f},
+    {0.f, -4.f, -4.f, 1.f, 1.f, 0.f},
+    {0.f, 4.f, -4.f, -1.f, 1.f, 0.f},
+    {0.f, -2.f, -1.f, 2.f, 1.f, 0.f},
+    {0.f, 2.f, -1.f, -2.f, 1.f, 0.f},
+    {0.f, 4.f, 0.f, -5.f, 0.f, 1.f},
+};
 
-        __m128 v0 = _mm_add_ps(
-                        _mm_mul_ps(_mm_set1_ps(4.f), r0),
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(-5.f), r2), r4)
-                      );
-        _mm_storeu_ps(&V_local[0][w], v0);
+const static float B_T[6][6] = {
+    {4.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, -4.f, 4.f, 0.f, 0.f, 0.f},
+    {-5.f, -4.f, -4.f, -2.f, 2.f, 4.f},
+    {0.f, 1.f, -1.f, 2.f, -2.f, -5.f},
+    {1.f, 1.f, 1.f, 1.f, 1.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 1.f},
+};
+// output = B^T * input * B
+inline void image_transform_simd_4x3(float input_d[6][6],
+                                 float output_d[6][6]) {
+    float temp[6][6];
 
-        __m128 v1 = _mm_add_ps(
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(-4.f), r1),
-                                   _mm_mul_ps(_mm_set1_ps(-4.f), r2)),
-                        _mm_add_ps(r3, r4)
-                      );
-        _mm_storeu_ps(&V_local[1][w], v1);
+    static const __m128 v_4 = _mm_set1_ps(4.f);
+    static const __m128 v_neg5 = _mm_set1_ps(-5.f);
+    static const __m128 v_neg4 = _mm_set1_ps(-4.f);
+    static const __m128 v_neg1 = _mm_set1_ps(-1.f);
+    static const __m128 v_2 = _mm_set1_ps(2.f);
+    static const __m128 v_neg2 = _mm_set1_ps(-2.f);
+    
+    
+    __m128 r0 = _mm_loadu_ps(&input_d[0][0]); // r0 = [d00, d01, d02, d03]
+    __m128 r1 = _mm_loadu_ps(&input_d[1][0]); // r1 = [d10, d11, d12, d13]
+    __m128 r2 = _mm_loadu_ps(&input_d[2][0]); // r2 = [d20, d21, d22, d23]
+    __m128 r3 = _mm_loadu_ps(&input_d[3][0]); // r3 = [d30, d31, d32, d33]
+    __m128 r4 = _mm_loadu_ps(&input_d[4][0]); // r4 = [d40, d41, d42, d43]  
+    __m128 r5 = _mm_loadu_ps(&input_d[5][0]); // r5 = [d50, d51, d52, d53]
 
-        __m128 v2 = _mm_add_ps(
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(4.f), r1),
-                                   _mm_mul_ps(_mm_set1_ps(-4.f), r2)),
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(-1.f), r3), r4)
-                      );
-        _mm_storeu_ps(&V_local[2][w], v2);
+    __m128 v0 = _mm_add_ps(
+                    _mm_mul_ps(v_4, r0),
+                    _mm_add_ps(_mm_mul_ps(v_neg5, r2), r4)
+                  ); // v0 = 4 * r0 + 0 * r1 + 0 * r2 + 0 * r3 + 0 * r4 + 0 * r5
+    _mm_storeu_ps(&temp[0][0], v0);
 
-        __m128 v3 = _mm_add_ps(
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(-2.f), r1),
-                                   _mm_mul_ps(_mm_set1_ps(-1.f), r2)),
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(2.f), r3), r4)
-                      );
-        _mm_storeu_ps(&V_local[3][w], v3);
+    __m128 v1 = _mm_add_ps(
+                    _mm_add_ps(_mm_mul_ps(v_neg4, r1),
+                                _mm_mul_ps(v_neg4, r2)),
+                    _mm_add_ps(r3, r4)
+                  );
+    _mm_storeu_ps(&temp[1][0], v1);
 
-        __m128 v4 = _mm_add_ps(
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(2.f), r1),
-                                   _mm_mul_ps(_mm_set1_ps(-1.f), r2)),
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(-2.f), r3), r4)
-                      );
-        _mm_storeu_ps(&V_local[4][w], v4);
+    __m128 v2 = _mm_add_ps(
+                    _mm_add_ps(_mm_mul_ps(v_4, r1),
+                                _mm_mul_ps(v_neg4, r2)),
+                    _mm_add_ps(_mm_mul_ps(v_neg1, r3), r4)
+                  );
+    _mm_storeu_ps(&temp[2][0], v2);
 
-        __m128 v5 = _mm_add_ps(
-                        _mm_add_ps(_mm_mul_ps(_mm_set1_ps(4.f), r1),
-                                   _mm_mul_ps(_mm_set1_ps(-5.f), r3)),
-                        r5
-                      );
-        _mm_storeu_ps(&V_local[5][w], v5);
-    }
-    for (int w = 4; w < 6; w++) {
-        float a0 = local_tile[0][w];
-        float a1 = local_tile[1][w];
-        float a2 = local_tile[2][w];
-        float a3 = local_tile[3][w];
-        float a4 = local_tile[4][w];
-        float a5 = local_tile[5][w];
-        V_local[0][w] = 4.f * a0 + (-5.f) * a2 + a4;
-        V_local[1][w] = -4.f * a1 + (-4.f) * a2 + a3 + a4;
-        V_local[2][w] = 4.f * a1 + (-4.f) * a2 + (-1.f)*a3 + a4;
-        V_local[3][w] = -2.f * a1 + (-1.f)*a2 + 2.f * a3 + a4;
-        V_local[4][w] = 2.f * a1 + (-1.f)*a2 + (-2.f)*a3 + a4;
-        V_local[5][w] = 4.f * a1 + (-5.f)*a3 + a5;
-    }
+    __m128 v3 = _mm_add_ps(
+                    _mm_add_ps(_mm_mul_ps(v_neg2, r1),
+                                _mm_mul_ps(v_neg1, r2)),
+                    _mm_add_ps(_mm_mul_ps(v_2, r3), r4)
+                  );
+    _mm_storeu_ps(&temp[3][0], v3);
 
-    for (int h = 0; h < 6; h++) {
-        __m128 vec = _mm_loadu_ps(&V_local[h][0]);
-        float v4 = V_local[h][4];
-        float v5 = V_local[h][5];
+    __m128 v4 = _mm_add_ps(
+                    _mm_add_ps(_mm_mul_ps(v_2, r1),
+                                _mm_mul_ps(v_neg1, r2)),
+                    _mm_add_ps(_mm_mul_ps(v_neg2, r3), r4)
+                  );
+    _mm_storeu_ps(&temp[4][0], v4);
+
+    __m128 v5 = _mm_add_ps(
+                    _mm_add_ps(_mm_mul_ps(v_4, r1),
+                                _mm_mul_ps(v_neg5, r3)),
+                    r5
+                  );
+    _mm_storeu_ps(&temp[5][0], v5);
+    
+    // 处理剩余的2个元素
+    auto transform_row = [&](int w) {
+        float a0 = input_d[0][w];
+        float a1 = input_d[1][w];
+        float a2 = input_d[2][w];
+        float a3 = input_d[3][w];
+        float a4 = input_d[4][w];
+        float a5 = input_d[5][w];
+        temp[0][w] = 4.f * a0 + (-5.f) * a2 + a4;
+        temp[1][w] = -4.f * a1 + (-4.f) * a2 + a3 + a4;
+        temp[2][w] = 4.f * a1 + (-4.f) * a2 + (-1.f)*a3 + a4;
+        temp[3][w] = -2.f * a1 + (-1.f)*a2 + 2.f * a3 + a4;
+        temp[4][w] = 2.f * a1 + (-1.f)*a2 + (-2.f)*a3 + a4;
+        temp[5][w] = 4.f * a1 + (-5.f)*a3 + a5;
+    };
+    transform_row(4);
+    transform_row(5);
+
+    auto transform_column = [&](int h) {
+      __m128 vec = _mm_loadu_ps(&temp[h][0]);
+        float v4 = temp[h][4];
+        float v5 = temp[h][5];
 
         __m128 coeff0 = _mm_set_ps(0.f, -5.f, 0.f, 4.f);
         float t0 = _mm_cvtss_f32(_mm_dp_ps(vec, coeff0, 0xF1)) + v4;
@@ -239,100 +275,20 @@ inline void image_transform_simd(float local_tile[6][6],
         __m128 coeff5 = _mm_set_ps(-5.f, 0.f, 4.f, 0.f);
         float t5 = _mm_cvtss_f32(_mm_dp_ps(vec, coeff5, 0xF1)) + v5;
 
-        final_tile[h][0] = t0;
-        final_tile[h][1] = t1;
-        final_tile[h][2] = t2;
-        final_tile[h][3] = t3;
-        final_tile[h][4] = t4;
-        final_tile[h][5] = t5;
-    }
-}
+        output_d[h][0] = t0;
+        output_d[h][1] = t1;
+        output_d[h][2] = t2;
+        output_d[h][3] = t3;
+        output_d[h][4] = t4;
+        output_d[h][5] = t5;
+    };
 
-void image_transform_reverse(float *__restrict__ image, // [batch][input_channel][input_height][input_width]
-                      float *__restrict__ V,
-                      const image_shape_t is,
-                      const V_shape_t vs,
-                      const tiling_info_t ti) {
-  int64_t collapsed_dim_size = vs.ic * ti.num_tiles;
-  typedef float (*V_tensor_t)[ti.tile_in_w][collapsed_dim_size];
-  typedef float (*image_tensor_t)[is.ic][is.h][is.w];
-  image_tensor_t image_tensor = (image_tensor_t)image;
-  V_tensor_t V_tensor = (V_tensor_t)V;
-
-  // V[tile_in_h][tile_in_w][ic][num_tiles]
-
-  #pragma omp parallel for collapse(2) schedule(static)
-  for (int64_t tile_idx = 0; tile_idx < ti.num_tiles; tile_idx++) {
-    for (int64_t ic_idx = 0; ic_idx < is.ic; ic_idx++) {
-      tile_index_t tidx = get_tile_index(tile_idx, ti);
-      int batch = tidx.b;
-      int base_h = tidx.th * 4;
-      int base_w = tidx.tw * 4;
-
-      // tile_in_h, ti.tile_in_w
-      float local_tile[6][6];
-      for (int h = 0; h < 6; h++) {
-        for (int w = 0; w < 6; w++) {
-          int img_h = base_h + h;
-          int img_w = base_w + w;
-          if (img_h < is.h && img_w < is.w) {
-            local_tile[h][w] = image_tensor[batch][ic_idx][img_h][img_w];
-          } else {
-            local_tile[h][w] = 0.0f;
-          }
-        }
-      }
-
-      float final_tile[6][6];
-      image_transform_simd(local_tile, final_tile);
-
-      int64_t idx = ic_idx * ti.num_tiles + tile_idx;
-      // int64_t idx = tile_idx * is.ic + ic_idx;
-      for (int h = 0; h < ti.tile_in_h; h++) {
-        for (int w = 0; w < ti.tile_in_w; w++) {
-          V_tensor[h][w][idx] = final_tile[h][w];
-        }
-      }
-    }
-  }
-  // #pragma omp parallel for schedule(static)
-  // for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
-  //   // V[tile_in_h][tile_in_w][num_tiles][ic]
-  //   // int tile_idx = idx / is.ic;
-  //   // int ic   = idx % is.ic;
-
-  //   // V[tile_in_h][tile_in_w][ic][num_tiles]
-  //   int ic = idx / ti.num_tiles;
-  //   int tile_idx = idx % ti.num_tiles;
-
-  //   tile_index_t tidx = get_tile_index(tile_idx, ti);
-  //   int batch = tidx.b;
-  //   int base_h = tidx.th * 4;
-  //   int base_w = tidx.tw * 4;
-
-  //   // tile_in_h, ti.tile_in_w
-  //   float local_tile[6][6];
-  //   for (int h = 0; h < 6; h++) {
-  //     for (int w = 0; w < 6; w++) {
-  //       int img_h = base_h + h;
-  //       int img_w = base_w + w;
-  //       if (img_h < is.h && img_w < is.w) {
-  //         local_tile[h][w] = image_tensor[batch][ic][img_h][img_w];
-  //       } else {
-  //         local_tile[h][w] = 0.0f;
-  //       }
-  //     }
-  //   }
-
-  //   float final_tile[6][6];
-  //   image_transform_simd(local_tile, final_tile);
-
-  //   for (int h = 0; h < ti.tile_in_h; h++) {
-  //     for (int w = 0; w < 6; w++) {
-  //       V_tensor[h][w][idx] = final_tile[h][w];
-  //     }
-  //   }
-  // }
+    transform_column(0);
+    transform_column(1);
+    transform_column(2);
+    transform_column(3);
+    transform_column(4);
+    transform_column(5);
 }
 
 void image_transform(float *__restrict__ image, // [batch][input_channel][input_height][input_width]
@@ -371,7 +327,7 @@ void image_transform(float *__restrict__ image, // [batch][input_channel][input_
       }
 
       float final_tile[6][6];
-      image_transform_simd(local_tile, final_tile);
+      image_transform_simd_4x3(local_tile, final_tile);
 
       // int64_t idx = ic_idx * ti.num_tiles + tile_idx;
       int64_t idx = tile_idx * is.ic + ic_idx;
@@ -382,44 +338,6 @@ void image_transform(float *__restrict__ image, // [batch][input_channel][input_
       }
     }
   }
-  // #pragma omp parallel for schedule(static)
-  // for (int64_t idx = 0; idx < collapsed_dim_size; idx++) {
-  //   // V[tile_in_h][tile_in_w][num_tiles][ic]
-  //   // int tile_idx = idx / is.ic;
-  //   // int ic   = idx % is.ic;
-
-  //   // V[tile_in_h][tile_in_w][ic][num_tiles]
-  //   int ic = idx / ti.num_tiles;
-  //   int tile_idx = idx % ti.num_tiles;
-
-  //   tile_index_t tidx = get_tile_index(tile_idx, ti);
-  //   int batch = tidx.b;
-  //   int base_h = tidx.th * 4;
-  //   int base_w = tidx.tw * 4;
-
-  //   // tile_in_h, ti.tile_in_w
-  //   float local_tile[6][6];
-  //   for (int h = 0; h < 6; h++) {
-  //     for (int w = 0; w < 6; w++) {
-  //       int img_h = base_h + h;
-  //       int img_w = base_w + w;
-  //       if (img_h < is.h && img_w < is.w) {
-  //         local_tile[h][w] = image_tensor[batch][ic][img_h][img_w];
-  //       } else {
-  //         local_tile[h][w] = 0.0f;
-  //       }
-  //     }
-  //   }
-
-  //   float final_tile[6][6];
-  //   image_transform_simd(local_tile, final_tile);
-
-  //   for (int h = 0; h < ti.tile_in_h; h++) {
-  //     for (int w = 0; w < 6; w++) {
-  //       V_tensor[h][w][idx] = final_tile[h][w];
-  //     }
-  //   }
-  // }
 }
 
 // 固定tile：
@@ -427,54 +345,131 @@ void image_transform(float *__restrict__ image, // [batch][input_channel][input_
 // ts.tile_in_w = TILE_IN_W; = 6
 // ts.tile_out_h = TILE_OUT_H; = 4
 // ts.tile_out_w = TILE_OUT_W; = 4
-#define OUTPUT_PIPELINED_FIXED_TILE
 
-static const float output_transform_martrix[4][6] = {
-  {1.f,  1.f,  1.f,  1.f,  1.f,  0.f},
-  {0.f,  1.f, -1.f,  2.f, -2.f,  0.f},
-  {0.f,  1.f,  1.f,  4.f,  4.f,  0.f},
-  {0.f,  1.f, -1.f,  8.f, -8.f,  1.f}
+// F(4,3)
+static const float A[4][6] = {
+    {1.f,  1.f,  1.f,  1.f,  1.f,  0.f},
+    {0.f,  1.f, -1.f,  2.f, -2.f,  0.f},
+    {0.f,  1.f,  1.f,  4.f,  4.f,  0.f},
+    {0.f,  1.f, -1.f,  8.f, -8.f,  1.f}
 };
-inline void output_transform_simd(const float *local_M, // [tile_in_h][tile_in_w][output_channel][num_tiles]
-                                  float *local_out) { // [batch][output_channel][output_height][output_width]
-    float tempH[4][6];
-    int j, k, i;
+static const float AT[6][4] = {
+    {1.f,  0.f,  0.f,  0.f},
+    {1.f,  1.f,  1.f,  1.f},
+    {1.f, -1.f,  1.f, -1.f},
+    {1.f,  2.f,  4.f,  8.f},
+    {1.f, -2.f,  4.f, -8.f},
+    {0.f,  0.f,  0.f,  1.f},
+};
+// Y = A * M * A^T
+inline void output_transform_simd_4x3(const float input_m[6][6] , // [tile_in_h=6][tile_in_w=6]
+                                  float output[4][4]) {     // [output_tile_h=4][output_tile_w=4]
+    float tempH[4][6] = {0};
 
-    for (j = 0; j < 6; j++) {
-        __m128 acc = _mm_setzero_ps();
-        for (k = 0; k < 6; k++) {
-            float m_val = local_M[k * 6 + j];  
-            __m128 m_val_vec = _mm_set1_ps(m_val);
-            __m128 hvec = _mm_setr_ps(
-                output_transform_martrix[0][k],
-                output_transform_martrix[1][k],
-                output_transform_martrix[2][k],
-                output_transform_martrix[3][k]
-            );
-            acc = _mm_fmadd_ps(m_val_vec, hvec, acc);
+    const __m128 v_1 = _mm_set1_ps(1.f);
+    const __m128 v_neg1 = _mm_set1_ps(-1.f);
+    const __m128 v_2 = _mm_set1_ps(2.f);
+    const __m128 v_neg2 = _mm_set1_ps(-2.f);
+    const __m128 v_4 = _mm_set1_ps(4.f);
+    const __m128 v_8 = _mm_set1_ps(8.f);
+    const __m128 v_neg8 = _mm_set1_ps(-8.f);
+    
+    for (int j = 0; j < 4; j += 4) {
+        __m128 t0 = _mm_setzero_ps();
+        __m128 t1 = _mm_setzero_ps();
+        __m128 t2 = _mm_setzero_ps();
+        __m128 t3 = _mm_setzero_ps();
+        // k = 0
+        {
+            __m128 m_col0 = _mm_loadu_ps(&input_m[0][j]);
+            t0 = _mm_fmadd_ps(m_col0, v_1, t0);
+            // t1 = _mm_fmadd_ps(m_col0, v_0, t1);
+            // t2 = _mm_fmadd_ps(m_col0, v_0, t2);
+            // t3 = _mm_fmadd_ps(m_col0, v_0, t3);
         }
-        float acc_arr[4];
-        _mm_storeu_ps(acc_arr, acc);
-        tempH[0][j] = acc_arr[0];
-        tempH[1][j] = acc_arr[1];
-        tempH[2][j] = acc_arr[2];
-        tempH[3][j] = acc_arr[3];
-    }
-    for (i = 0; i < 4; i++) {
-        __m128 acc = _mm_setzero_ps();
-        for (k = 0; k < 6; k++) {
-            float t_val = tempH[i][k];  // tempH[i][k]
-            __m128 t_vec = _mm_set1_ps(t_val);
-            __m128 hvec = _mm_setr_ps(
-                output_transform_martrix[0][k],
-                output_transform_martrix[1][k],
-                output_transform_martrix[2][k],
-                output_transform_martrix[3][k]
-            );
-            acc = _mm_fmadd_ps(t_vec, hvec, acc);
+        // k = 1
+        {
+            __m128 m = _mm_loadu_ps(&input_m[1][j]);
+            t0 = _mm_fmadd_ps(m, v_1, t0);
+            t1 = _mm_fmadd_ps(m, v_1, t1);
+            t2 = _mm_fmadd_ps(m, v_1, t2);
+            t3 = _mm_fmadd_ps(m, v_1, t3);
         }
-        _mm_storeu_ps(&local_out[i * 4], acc);
+        // k = 2
+        {
+            __m128 m = _mm_loadu_ps(&input_m[2][j]);
+            t0 = _mm_fmadd_ps(m, v_1, t0);
+            t1 = _mm_fmadd_ps(m, v_neg1, t1);
+            t2 = _mm_fmadd_ps(m, v_1, t2);
+            t3 = _mm_fmadd_ps(m, v_neg1, t3);
+        }
+        // k = 3
+        {
+            __m128 m = _mm_loadu_ps(&input_m[3][j]);
+            t0 = _mm_fmadd_ps(m, v_1, t0);
+            t1 = _mm_fmadd_ps(m, v_2, t1);
+            t2 = _mm_fmadd_ps(m, v_4, t2);
+            t3 = _mm_fmadd_ps(m, v_8, t3);
+        }
+        // k = 4
+        {
+            __m128 m = _mm_loadu_ps(&input_m[4][j]);
+            t0 = _mm_fmadd_ps(m, v_1, t0);
+            t1 = _mm_fmadd_ps(m, v_neg2, t1);
+            t2 = _mm_fmadd_ps(m, v_4, t2);
+            t3 = _mm_fmadd_ps(m, v_neg8, t3);
+        }
+        // k = 5
+        {
+            __m128 m = _mm_loadu_ps(&input_m[5][j]);
+            // t0 = _mm_fmadd_ps(m, v_0, t0);
+            // t1 = _mm_fmadd_ps(m, v_0, t1);
+            // t2 = _mm_fmadd_ps(m, v_0, t2);
+            t3 = _mm_fmadd_ps(m, v_1, t3);
+        }
+        _mm_storeu_ps(&tempH[0][j], t0);
+        _mm_storeu_ps(&tempH[1][j], t1);
+        _mm_storeu_ps(&tempH[2][j], t2);
+        _mm_storeu_ps(&tempH[3][j], t3);
     }
+    for (int j = 4; j < 6; j++) {
+        for (int k = 0; k < 6; k++) {
+            tempH[0][j] += input_m[k][j] * A[0][k];
+            tempH[1][j] += input_m[k][j] * A[1][k];
+            tempH[2][j] += input_m[k][j] * A[2][k];
+            tempH[3][j] += input_m[k][j] * A[3][k];
+        }
+    }
+
+    static const __m128 v_col0 = _mm_set_ps(AT[3][0], AT[2][0], AT[1][0], AT[0][0]);
+    static const __m128 v_col1 = _mm_set_ps(AT[3][1], AT[2][1], AT[1][1], AT[0][1]);
+    static const __m128 v_col2 = _mm_set_ps(AT[3][2], AT[2][2], AT[1][2], AT[0][2]);
+    static const __m128 v_col3 = _mm_set_ps(AT[3][3], AT[2][3], AT[1][3], AT[0][3]);
+    auto transform_row = [&](int i) {
+        __m128 t = _mm_loadu_ps(&tempH[i][0]);
+        float sum0 = _mm_cvtss_f32(_mm_dp_ps(t, v_col0, 0xF1));
+        float sum1 = _mm_cvtss_f32(_mm_dp_ps(t, v_col1, 0xF1));
+        float sum2 = _mm_cvtss_f32(_mm_dp_ps(t, v_col2, 0xF1));
+        float sum3 = _mm_cvtss_f32(_mm_dp_ps(t, v_col3, 0xF1));
+
+        // sum0 += tempH[i][4] * AT[4][0] + tempH[i][5] * AT[5][0];
+        // sum1 += tempH[i][4] * AT[4][1] + tempH[i][5] * AT[5][1];
+        // sum2 += tempH[i][4] * AT[4][2] + tempH[i][5] * AT[5][2];
+        // sum3 += tempH[i][4] * AT[4][3] + tempH[i][5] * AT[5][3];
+
+        sum0 += tempH[i][4];
+        sum1 += tempH[i][4] * -2;
+        sum2 += tempH[i][4] * 4;
+        sum3 += tempH[i][4] * -8 + tempH[i][5];
+
+        __m128 result = _mm_setr_ps(sum0, sum1, sum2, sum3);
+        _mm_storeu_ps(&output[i][0], result);
+    };
+
+    transform_row(0);
+    transform_row(1);
+    transform_row(2);
+    transform_row(3);
 }
 
 
@@ -510,7 +505,7 @@ void output_transform(float *__restrict__ M, // [tile_in_h][tile_in_w][output_ch
       }
     }
     float local_out[4][4];
-    output_transform_simd(&local_M[0][0], &local_out[0][0]);
+    output_transform_simd_4x3(local_M, local_out);
     
     tile_index_t tidx = get_tile_index(tile, ti);
     int batch = tidx.b;
@@ -544,94 +539,6 @@ void output_transform(float *__restrict__ M, // [tile_in_h][tile_in_w][output_ch
            (end_time - get_tile_index_end) / 1000000);
     printf("----------------------------------\n");
   #endif
-}
-
-void sgemm(const int64_t num_tiles, const int64_t ic, const int64_t oc, float *A, float *B, float *C) {
-  typedef float(*A_tensor_t)[ic];
-  typedef float(*B_tensor_t)[num_tiles];
-  typedef float(*C_tensor_t)[num_tiles];
-  A_tensor_t A_tensor = (A_tensor_t)A;
-  B_tensor_t B_tensor = (B_tensor_t)B;
-  C_tensor_t C_tensor = (C_tensor_t)C;
-
-  // U[oc][ic]
-  // V[ic][num_tiles]
-  // M[oc][num_tiles]
-  memset(C_tensor, 0, sizeof(float) * num_tiles * oc);
-
-  #pragma omp parallel for collapse(2) schedule(static)
-  for (int64_t i = 0; i < oc; ++i) {
-    for (int64_t j = 0; j < ic; ++j) {
-      for (int64_t k = 0; k < num_tiles; ++k) {
-        C_tensor[i][k] += A_tensor[j][k] * B_tensor[i][j];
-      }
-    }
-  }
-}
-
-void V_rev_sgemm(const tiling_info_t ti,
-                 const filter_shape_t fs,
-                 float * __restrict__ U,  
-                 float * __restrict__ V,
-                 float*  __restrict__ M) {
-  typedef float (*U_tensor_t)[ti.tile_in_w][fs.oc][fs.ic];
-  typedef float (*V_tensor_t)[ti.tile_in_w][fs.ic][ti.num_tiles];
-  typedef float (*M_tensor_t)[ti.tile_in_w][fs.oc][ti.num_tiles];
-
-  U_tensor_t U_tensor = (U_tensor_t)U;
-  V_tensor_t V_tensor = (V_tensor_t)V;
-  M_tensor_t M_tensor = (M_tensor_t)M;
-
-  // filter_shape_t: {oc: 64, ic: 3, h: 3, w: 3}
-  // tiling_info_t: {bs: 64, num_tile_per_image: 3136, num_tiles: 200704, tiles_on_h: 56, tiles_on_w: 56,
-  // tile_in_h: 6, tile_in_w: 6, tile_out_h: 4, tile_out_w: 4}
-
-  // U[tile_in_h][tile_in_w][oc][ic]
-  // V[tile_in_h][tile_in_w][ic][num_tiles]
-  // M[tile_in_h][tile_in_w][oc][num_tiles]
-  // M[tile_in_h][tile_in_w][oc][num_tiles] = \sum_{ic} U[tile_in_h][tile_in_w][oc][ic] * V[tile_in_h][tile_in_w][num_tiles][ic]
-
-  // tile_in_h = 6, tile_in_w = 6
-  // num_tiles = ts.tiles_on_h * ts.tiles_on_w  * batch_size
-  // fs.h = 3, fs.w = 3
-  // ts.tiles_on_h = DIV_UP(os.h, TILE_OUT_H) = DIV_UP(is.h - fs.h + 1, 4)
-  // ts.tiles_on_w = DIV_UP(os.w, TILE_OUT_W) = DIV_UP(is.w - fs.w + 1, 4)
-  // os.h = is.h - fs.h + 1 = is.h - 2
-  // os.w = is.w - fs.w + 1 = is.w - 2
-  // -> num_tiles = DIV_UP(is.h - 2, 4) * DIV_UP(is.w - 2, 4) * batch_size
-  // -> num_tiles = DIV_UP(input_image_height - filter_height + 1, 4) * 
-  //                DIV_UP(input_image_width - filter_width + 1, 4) * 
-  //                batch_size
-  // num_tiles >>> oc
-
-  memset(M_tensor, 0, sizeof(float) * ti.tile_in_h * ti.tile_in_w * fs.oc * ti.num_tiles);
-
-
-  int64_t start_time = current_time_ms();
-  #pragma omp parallel for collapse(4) schedule(static)
-  for (int64_t h = 0; h < ti.tile_in_h; h++) {
-    for (int64_t w = 0; w < ti.tile_in_w; w++) {
-      // sgemm(ti.num_tiles, fs.ic, fs.oc, &V_tensor[h][w][0][0], &U_tensor[h][w][0][0], &M_tensor[h][w][0][0]);
-      // float *base_U = &U_tensor[h][w][0][0];
-      for (int64_t oc = 0; oc < fs.oc; oc++) {
-        for(int64_t ic = 0; ic < fs.ic; ic++) {
-          float *base_M = &M_tensor[h][w][oc][0];
-          float *base_V = &V_tensor[h][w][ic][0];
-          // float U_val = base_U[oc * fs.ic + ic];
-          float U_val = U_tensor[h][w][oc][ic];
-          #pragma omp simd
-          for(int64_t tile = 0; tile < ti.num_tiles; tile++) {
-            base_M[tile] += base_V[tile] * U_val;
-          }
-        }
-      }
-    }
-  }
-
-  int64_t end_time = current_time_ms();
-  printf("tile_in_h X tile_in_w X oc X ic: %ld X %ld X %ld X %ld = %ld\n", 
-         ti.tile_in_h, ti.tile_in_w, fs.oc, fs.ic, ti.tile_in_h * ti.tile_in_w * fs.oc * fs.ic);
-  printf("test_sgemm time: %ld ms\n", end_time - start_time);
 }
 
 void fused_sgemm(const tiling_info_t ti,
@@ -668,6 +575,9 @@ void fused_sgemm(const tiling_info_t ti,
 
   const int64_t tile_block_size = 64;
   const int64_t oc_block_size = 16;
+  const int64_t k_simd_bound = (fs.ic / 16) * 16;
+  const int64_t k_simd_iter_num = k_simd_bound / 16;
+  const int64_t k_simd_bound_tail = fs.ic - (k_simd_iter_num * 16);
 
   int64_t tile_block_end, oc_block_end;
   #pragma omp parallel for collapse(4) schedule(static) private(tile_block_end, oc_block_end)
@@ -686,15 +596,17 @@ void fused_sgemm(const tiling_info_t ti,
               float *base_V = &base_base_V[tile * fs.ic];
 
               int64_t k = 0;
-              int64_t k_simd_bound = (fs.ic / 16) * 16;
-              for (; k < k_simd_bound; k += 16) {
+                            
+              for (int64_t i = 0; i < k_simd_iter_num; i++) {
                 __m512 v_val = _mm512_loadu_ps(&base_V[k]);
                 __m512 u_val = _mm512_loadu_ps(&base_U[k]);
                 vsum = _mm512_fmadd_ps(v_val, u_val, vsum);
+                k += 16;
               }
+
+              // 尾部不足16的处理
               if (k < fs.ic) {
-                const int tail = fs.ic - k;
-                __mmask16 mask = (1 << tail) - 1;
+                __mmask16 mask = (1 << k_simd_bound_tail) - 1;
                 __m512 v_val = _mm512_maskz_loadu_ps(mask, &base_V[k]);
                 __m512 u_val = _mm512_maskz_loadu_ps(mask, &base_U[k]);
                 vsum = _mm512_fmadd_ps(v_val, u_val, vsum);
@@ -707,60 +619,6 @@ void fused_sgemm(const tiling_info_t ti,
         }
       }
     }
-  }
-}
-
-// 16GB
-const size_t default_size = 1L << 36;
-
-typedef struct {
-  float *ptr;
-  size_t size;
-  int in_use;
-} memory_manager_t;
-
-memory_manager_t memory_manager = {nullptr, 0, 0};
-
-void *my_simple_reuse_malloc(size_t size) {
-  if (memory_manager.in_use == 1) {
-    // 并非多线程，所以不需要考虑线程安全
-    return nullptr;
-  }
-
-  if (memory_manager.ptr == nullptr) {
-    // 第一次分配
-    // memory_manager.ptr = (float *)malloc(size);
-    if (size < default_size){
-      size = default_size;
-    }
-    memory_manager.ptr = (float *)aligned_alloc(32, size);
-    memory_manager.size = size;
-    memory_manager.in_use = 1;
-  }else{
-    // 非第一次分配
-    if (memory_manager.size < size) {
-      // memory_manager.ptr = (float *)realloc(memory_manager.ptr, size);
-      // free(memory_manager.ptr);
-      memory_manager.ptr = (float *)aligned_alloc(32, size);
-      memory_manager.size = size;
-    }
-  }
-  return memory_manager.ptr;
-}
-
-void my_simple_reuse_free(void *ptr) {
-  if (ptr == memory_manager.ptr) {
-    memory_manager.in_use = 0;
-  }
-}
-
-
-// 好吧不能改driver.cc，没机会调用了
-void my_simple_memory_real_free(void *ptr) {
-  if (ptr == memory_manager.ptr) {
-    free(memory_manager.ptr);
-    memory_manager.ptr = nullptr;
-    memory_manager.size = 0;
   }
 }
 
@@ -827,14 +685,23 @@ void winograd_convolution(
   //   ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic +
   //   ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc
   // ));
+
+  // U 和 V 最后一维都是is.ic，但是不足16的倍数，padding到16
+  int64_t padding_alloc_ic = DIV_UP(is.ic, 16) * 16;
+
+  // 分配内存
   float *total_memory = (float *)my_simple_reuse_malloc(sizeof(float) * (
-    ti.tile_in_h * ti.tile_in_w * us.oc * us.ic +
-    ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic +
+    ti.tile_in_h * ti.tile_in_w * us.oc * padding_alloc_ic +
+    ti.tile_in_h * ti.tile_in_w * vs.num_tiles * padding_alloc_ic +
     ti.tile_in_h * ti.tile_in_w * vs.num_tiles * us.oc
   ));
   float *U = total_memory;
-  float *V = U + ti.tile_in_h * ti.tile_in_w * us.oc * us.ic;
-  float *M = V + ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic;
+
+  // 让V和M对齐32字节
+  int64_t U_offset_32 = DIV_UP(ti.tile_in_h * ti.tile_in_w * us.oc * padding_alloc_ic, 32) * 32;
+  float *V = U + U_offset_32;
+  int64_t V_offset_32 = DIV_UP(ti.tile_in_h * ti.tile_in_w * vs.num_tiles * padding_alloc_ic, 32) * 32;
+  float *M = V + V_offset_32;
 
   // float *U = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * us.oc * us.ic);
   // float *V = (float *)malloc(sizeof(float) * ti.tile_in_h * ti.tile_in_w * vs.num_tiles * vs.ic);
@@ -872,7 +739,7 @@ void winograd_convolution(
   #endif
 
   // filter_transform(packed_filter, U, fs, us, us.oc * us.ic);
-  filter_transform(filter, U, fs, us, us.oc * us.ic);
+  filter_transform(filter, U, fs, us);
   #ifdef DEBUG
     int64_t filter_transform_time = current_time_ms();
   #endif

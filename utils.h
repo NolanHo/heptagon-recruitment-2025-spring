@@ -148,3 +148,18 @@ inline tile_index_t get_tile_index(int64_t tile, tiling_info_t ts) {
   ti.tw = tile % ts.tiles_on_w;
   return ti;
 }
+
+#include <time.h>
+
+
+inline int64_t current_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)(ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL);
+}
+
+inline int64_t current_time_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)(ts.tv_sec * 1000000000LL + ts.tv_nsec);
+}
