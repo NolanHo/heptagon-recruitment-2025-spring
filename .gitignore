@@ -6,3 +6,4 @@ slurm-output
 slurm-error
 out.perf
 jemalloc
+perf_archive
