@@ -18,8 +18,8 @@ make
 sbatch run.sh
 ```
 
-## 最好结果
-
+## 最好结果(performance.txt)
+- vgg16
 ```bash
 Layer 0 :  Elapse time 81.325293 ms. (  134.04 GFlops) 
 Layer 1 :  Elapse time 129.655997 ms. ( 1793.60 GFlops) 
@@ -39,6 +39,8 @@ Layer 14:  Elapse time 7.876714 ms. ( 5520.90 GFlops)
 Layer 15:  Elapse time 8.124352 ms. ( 5352.62 GFlops) 
 Total elapse time: 0.667844. ( 3361.57 GFlops) 
 ```
+
+- perf
 ```bash
 
  Performance counter stats for './winograd conf/vgg16.conf':
@@ -73,4 +75,24 @@ Total elapse time: 0.667844. ( 3361.57 GFlops)
 
      124.103938000 seconds user
       16.778565000 seconds sys
+```
+- verify
+```
+Layer 0 : (Channel Height Weight Filter Batch) = (3   224 224 64  64 ) : Validation Passed !
+Layer 1 : (Channel Height Weight Filter Batch) = (64  224 224 64  64 ) : Validation Passed !
+Layer 2 : (Channel Height Weight Filter Batch) = (64  112 112 128 64 ) : Validation Passed !
+Layer 3 : (Channel Height Weight Filter Batch) = (128 112 112 128 64 ) : Validation Passed !
+Layer 4 : (Channel Height Weight Filter Batch) = (128 56  56  256 64 ) : Validation Passed !
+Layer 5 : (Channel Height Weight Filter Batch) = (256 56  56  256 64 ) : Validation Passed !
+Layer 6 : (Channel Height Weight Filter Batch) = (256 56  56  256 64 ) : Validation Passed !
+Layer 7 : (Channel Height Weight Filter Batch) = (256 56  56  256 64 ) : Validation Passed !
+Layer 8 : (Channel Height Weight Filter Batch) = (256 28  28  512 64 ) : Validation Passed !
+Layer 9 : (Channel Height Weight Filter Batch) = (512 28  28  512 64 ) : Validation Passed !
+Layer 10: (Channel Height Weight Filter Batch) = (512 28  28  512 64 ) : Validation Passed !
+Layer 11: (Channel Height Weight Filter Batch) = (512 28  28  512 64 ) : Validation Passed !
+Layer 12: (Channel Height Weight Filter Batch) = (512 14  14  512 64 ) : Validation Passed !
+Layer 13: (Channel Height Weight Filter Batch) = (512 14  14  512 64 ) : Validation Passed !
+Layer 14: (Channel Height Weight Filter Batch) = (512 14  14  512 64 ) : Validation Passed !
+Layer 15: (Channel Height Weight Filter Batch) = (512 14  14  512 64 ) : Validation Passed !
+
 ```
