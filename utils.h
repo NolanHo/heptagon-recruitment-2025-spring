@@ -5,12 +5,15 @@
 #define MIN(A, B) (((A) < (B)) ? (A) : (B))
 #define MAX(A, B) (((A) > (B)) ? (A) : (B))
 
+// 卷积核大小 = 3 x 3
 #define FLT_H 3L
 #define FLT_W 3L
 
+// 输入tile大小 = 6 x 6
 #define TILE_IN_H 6L
 #define TILE_IN_W 6L
 
+// 输出tile大小 = 4 x 4
 #define TILE_OUT_H 4L
 #define TILE_OUT_W 4L
 
@@ -99,9 +102,9 @@ typedef struct {
 inline out_shape_t get_output_shape(image_shape_t is, filter_shape_t fs) {
   out_shape_t os;
   os.bs = is.bs;
-  os.oc = fs.oc;
-  os.h = is.h - fs.h + 1;
-  os.w = is.w - fs.w + 1;
+  os.oc = fs.oc; 
+  os.h = is.h - fs.h + 1; // no padding
+  os.w = is.w - fs.w + 1; // no padding
   return os;
 }
 
@@ -112,10 +115,10 @@ inline tiling_info_t get_tiling_info(image_shape_t is, out_shape_t os) {
   ts.bs = is.bs;
   ts.num_tile_per_image = ts.tiles_on_h * ts.tiles_on_w;
   ts.num_tiles = ts.num_tile_per_image * ts.bs;
-  ts.tile_in_h = TILE_IN_H;
-  ts.tile_in_w = TILE_IN_W;
-  ts.tile_out_h = TILE_OUT_H;
-  ts.tile_out_w = TILE_OUT_W;
+  ts.tile_in_h = TILE_IN_H; // 6
+  ts.tile_in_w = TILE_IN_W; // 6
+  ts.tile_out_h = TILE_OUT_H; // 4
+  ts.tile_out_w = TILE_OUT_W; // 4
   return ts;
 }
 
@@ -144,4 +147,19 @@ inline tile_index_t get_tile_index(int64_t tile, tiling_info_t ts) {
   ti.th = tile / ts.tiles_on_w;
   ti.tw = tile % ts.tiles_on_w;
   return ti;
+}
+
+#include <time.h>
+
+
+inline int64_t current_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)(ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL);
+}
+
+inline int64_t current_time_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)(ts.tv_sec * 1000000000LL + ts.tv_nsec);
 }

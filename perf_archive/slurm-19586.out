@@ -1,0 +1,41 @@
+Layer 0 :  Elapse time 0.012318 ms. (    1.12 GFlops) 
+Layer 1 :  Elapse time 0.031630 ms. (    2.19 GFlops) 
+Layer 2 :  Elapse time 1.219988 ms. (    2.04 GFlops) 
+Layer 3 :  Elapse time 15.728712 ms. (   10.80 GFlops) 
+Layer 4 :  Elapse time 521.053712 ms. (   10.43 GFlops) 
+Total elapse time: 0.538046. (   10.42 GFlops) 
+
+ Performance counter stats for './winograd conf/small.conf':
+
+          1,634.02 msec task-clock                #    0.999 CPUs utilized          
+                17      context-switches          #   10.404 /sec                   
+                 0      cpu-migrations            #    0.000 /sec                   
+           186,700      page-faults               #  114.258 K/sec                  
+     4,229,236,768      cycles                    #    2.588 GHz                      (38.11%)
+     6,484,009,532      instructions              #    1.53  insn per cycle           (45.94%)
+       871,662,849      branches                  #  533.447 M/sec                    (53.77%)
+         1,355,991      branch-misses             #    0.16% of all branches          (61.60%)
+    21,148,066,844      slots                     #   12.942 G/sec                    (69.66%)
+     3,437,381,061      topdown-retiring          #     14.5% retiring                (69.66%)
+    12,191,238,533      topdown-bad-spec          #     51.4% bad speculation         (69.66%)
+       618,417,220      topdown-fe-bound          #      2.6% frontend bound          (69.66%)
+     7,448,452,856      topdown-be-bound          #     31.4% backend bound           (69.66%)
+     2,150,395,022      L1-dcache-loads           #    1.316 G/sec                    (69.65%)
+       455,547,230      L1-dcache-load-misses     #   21.18% of all L1-dcache accesses  (69.65%)
+         1,644,967      LLC-loads                 #    1.007 M/sec                    (69.65%)
+           994,342      LLC-load-misses           #   60.45% of all LL-cache accesses  (69.65%)
+   <not supported>      L1-icache-loads                                             
+         2,968,204      L1-icache-load-misses                                         (30.35%)
+     2,139,155,622      dTLB-loads                #    1.309 G/sec                    (30.35%)
+           317,381      dTLB-load-misses          #    0.01% of all dTLB cache accesses  (30.35%)
+   <not supported>      iTLB-loads                                                  
+             2,009      iTLB-load-misses                                              (30.35%)
+   <not supported>      L1-dcache-prefetches                                        
+   <not supported>      L1-dcache-prefetch-misses                                   
+
+       1.636201595 seconds time elapsed
+
+       1.365363000 seconds user
+       0.269056000 seconds sys
+
+

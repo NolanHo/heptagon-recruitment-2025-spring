@@ -1,0 +1,486 @@
+sgemm opt, filter has omp
+
+--------------------------------
+filter_packing_time: 4487483213, delta: 0ms
+filter_transform_time: 4487483213, delta: 0ms
+image_packing_time: 4487483335, delta: 122ms
+image_transform_time: 4487483557, delta: 222ms
+sgemm_time: 4487494793, delta: 11236ms
+output_transform_time: 4487497603, delta: 2810ms
+output_unpacking_store_time: 4487499485, delta: 1882ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487499671, delta: 0ms
+filter_transform_time: 4487499671, delta: 0ms
+image_packing_time: 4487499794, delta: 123ms
+image_transform_time: 4487500017, delta: 223ms
+sgemm_time: 4487511253, delta: 11236ms
+output_transform_time: 4487514062, delta: 2809ms
+output_unpacking_store_time: 4487515657, delta: 1595ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487515843, delta: 0ms
+filter_transform_time: 4487515843, delta: 0ms
+image_packing_time: 4487515966, delta: 123ms
+image_transform_time: 4487516188, delta: 222ms
+sgemm_time: 4487527424, delta: 11236ms
+output_transform_time: 4487530233, delta: 2809ms
+output_unpacking_store_time: 4487531828, delta: 1595ms
+--------------------------------
+Layer 0 :  Elapse time 16267.939727 ms. (    0.67 GFlops) 
+--------------------------------
+filter_packing_time: 4487532719, delta: 0ms
+filter_transform_time: 4487532721, delta: 2ms
+image_packing_time: 4487535224, delta: 2503ms
+image_transform_time: 4487539912, delta: 4688ms
+sgemm_time: 4487544225, delta: 4313ms
+output_transform_time: 4487547046, delta: 2821ms
+output_unpacking_store_time: 4487548909, delta: 1863ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487549277, delta: 0ms
+filter_transform_time: 4487549279, delta: 2ms
+image_packing_time: 4487551784, delta: 2505ms
+image_transform_time: 4487556468, delta: 4684ms
+sgemm_time: 4487560663, delta: 4195ms
+output_transform_time: 4487563603, delta: 2940ms
+output_unpacking_store_time: 4487565197, delta: 1594ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487565571, delta: 0ms
+filter_transform_time: 4487565572, delta: 1ms
+image_packing_time: 4487568076, delta: 2504ms
+image_transform_time: 4487572766, delta: 4690ms
+sgemm_time: 4487576959, delta: 4193ms
+output_transform_time: 4487579896, delta: 2937ms
+output_unpacking_store_time: 4487581490, delta: 1594ms
+--------------------------------
+Layer 1 :  Elapse time 16379.449368 ms. (   14.20 GFlops) 
+--------------------------------
+filter_packing_time: 4487582100, delta: 0ms
+filter_transform_time: 4487582102, delta: 2ms
+image_packing_time: 4487582732, delta: 630ms
+image_transform_time: 4487583920, delta: 1188ms
+sgemm_time: 4487586103, delta: 2183ms
+output_transform_time: 4487587509, delta: 1406ms
+output_unpacking_store_time: 4487588444, delta: 935ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487588581, delta: 0ms
+filter_transform_time: 4487588583, delta: 2ms
+image_packing_time: 4487589213, delta: 630ms
+image_transform_time: 4487590401, delta: 1188ms
+sgemm_time: 4487592478, delta: 2077ms
+output_transform_time: 4487593885, delta: 1407ms
+output_unpacking_store_time: 4487594683, delta: 798ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487594821, delta: 0ms
+filter_transform_time: 4487594823, delta: 2ms
+image_packing_time: 4487595453, delta: 630ms
+image_transform_time: 4487596641, delta: 1188ms
+sgemm_time: 4487598727, delta: 2086ms
+output_transform_time: 4487600133, delta: 1406ms
+output_unpacking_store_time: 4487600932, delta: 799ms
+--------------------------------
+Layer 2 :  Elapse time 6322.888692 ms. (   18.06 GFlops) 
+--------------------------------
+filter_packing_time: 4487601433, delta: 1ms
+filter_transform_time: 4487601437, delta: 4ms
+image_packing_time: 4487602702, delta: 1265ms
+image_transform_time: 4487605054, delta: 2352ms
+sgemm_time: 4487610158, delta: 5104ms
+output_transform_time: 4487611571, delta: 1413ms
+output_unpacking_store_time: 4487612503, delta: 932ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487612692, delta: 0ms
+filter_transform_time: 4487612696, delta: 4ms
+image_packing_time: 4487613962, delta: 1266ms
+image_transform_time: 4487616319, delta: 2357ms
+sgemm_time: 4487620161, delta: 3842ms
+output_transform_time: 4487621568, delta: 1407ms
+output_unpacking_store_time: 4487622367, delta: 799ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487622555, delta: 0ms
+filter_transform_time: 4487622559, delta: 4ms
+image_packing_time: 4487623824, delta: 1265ms
+image_transform_time: 4487626175, delta: 2351ms
+sgemm_time: 4487630019, delta: 3844ms
+output_transform_time: 4487631431, delta: 1412ms
+output_unpacking_store_time: 4487632229, delta: 798ms
+--------------------------------
+Layer 3 :  Elapse time 10328.452984 ms. (   22.11 GFlops) 
+--------------------------------
+filter_packing_time: 4487632542, delta: 0ms
+filter_transform_time: 4487632550, delta: 8ms
+image_packing_time: 4487632865, delta: 315ms
+image_transform_time: 4487633460, delta: 595ms
+sgemm_time: 4487636041, delta: 2581ms
+output_transform_time: 4487636750, delta: 709ms
+output_unpacking_store_time: 4487637216, delta: 466ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487637291, delta: 1ms
+filter_transform_time: 4487637299, delta: 8ms
+image_packing_time: 4487637613, delta: 314ms
+image_transform_time: 4487638207, delta: 594ms
+sgemm_time: 4487640165, delta: 1958ms
+output_transform_time: 4487640874, delta: 709ms
+output_unpacking_store_time: 4487641273, delta: 399ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487641346, delta: 0ms
+filter_transform_time: 4487641354, delta: 8ms
+image_packing_time: 4487641667, delta: 313ms
+image_transform_time: 4487642261, delta: 594ms
+sgemm_time: 4487644219, delta: 1958ms
+output_transform_time: 4487644929, delta: 710ms
+output_unpacking_store_time: 4487645328, delta: 399ms
+--------------------------------
+Layer 4 :  Elapse time 4286.495050 ms. (   25.68 GFlops) 
+--------------------------------
+filter_packing_time: 4487645585, delta: 1ms
+filter_transform_time: 4487645602, delta: 17ms
+image_packing_time: 4487646235, delta: 633ms
+image_transform_time: 4487647423, delta: 1188ms
+sgemm_time: 4487652262, delta: 4839ms
+output_transform_time: 4487652967, delta: 705ms
+output_unpacking_store_time: 4487653434, delta: 467ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487653533, delta: 1ms
+filter_transform_time: 4487653549, delta: 16ms
+image_packing_time: 4487654183, delta: 634ms
+image_transform_time: 4487655370, delta: 1187ms
+sgemm_time: 4487659078, delta: 3708ms
+output_transform_time: 4487659783, delta: 705ms
+output_unpacking_store_time: 4487660182, delta: 399ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487660281, delta: 1ms
+filter_transform_time: 4487660295, delta: 14ms
+image_packing_time: 4487660929, delta: 634ms
+image_transform_time: 4487662117, delta: 1188ms
+sgemm_time: 4487665826, delta: 3709ms
+output_transform_time: 4487666532, delta: 706ms
+output_unpacking_store_time: 4487666931, delta: 399ms
+--------------------------------
+Layer 5 :  Elapse time 7148.337364 ms. (   30.80 GFlops) 
+--------------------------------
+filter_packing_time: 4487667218, delta: 1ms
+filter_transform_time: 4487667232, delta: 14ms
+image_packing_time: 4487667866, delta: 634ms
+image_transform_time: 4487669055, delta: 1189ms
+sgemm_time: 4487672763, delta: 3708ms
+output_transform_time: 4487673468, delta: 705ms
+output_unpacking_store_time: 4487673934, delta: 466ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487674034, delta: 1ms
+filter_transform_time: 4487674048, delta: 14ms
+image_packing_time: 4487674681, delta: 633ms
+image_transform_time: 4487675869, delta: 1188ms
+sgemm_time: 4487679578, delta: 3709ms
+output_transform_time: 4487680283, delta: 705ms
+output_unpacking_store_time: 4487680682, delta: 399ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487680781, delta: 1ms
+filter_transform_time: 4487680795, delta: 14ms
+image_packing_time: 4487681429, delta: 634ms
+image_transform_time: 4487682617, delta: 1188ms
+sgemm_time: 4487686325, delta: 3708ms
+output_transform_time: 4487687030, delta: 705ms
+output_unpacking_store_time: 4487687430, delta: 400ms
+--------------------------------
+Layer 6 :  Elapse time 6770.284732 ms. (   32.52 GFlops) 
+--------------------------------
+filter_packing_time: 4487687718, delta: 1ms
+filter_transform_time: 4487687732, delta: 14ms
+image_packing_time: 4487688365, delta: 633ms
+image_transform_time: 4487689552, delta: 1187ms
+sgemm_time: 4487693261, delta: 3709ms
+output_transform_time: 4487693966, delta: 705ms
+output_unpacking_store_time: 4487694432, delta: 466ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487694531, delta: 1ms
+filter_transform_time: 4487694545, delta: 14ms
+image_packing_time: 4487695178, delta: 633ms
+image_transform_time: 4487696367, delta: 1189ms
+sgemm_time: 4487700075, delta: 3708ms
+output_transform_time: 4487700781, delta: 706ms
+output_unpacking_store_time: 4487701180, delta: 399ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487701279, delta: 1ms
+filter_transform_time: 4487701293, delta: 14ms
+image_packing_time: 4487701927, delta: 634ms
+image_transform_time: 4487703114, delta: 1187ms
+sgemm_time: 4487706823, delta: 3709ms
+output_transform_time: 4487707528, delta: 705ms
+output_unpacking_store_time: 4487707927, delta: 399ms
+--------------------------------
+Layer 7 :  Elapse time 6769.488017 ms. (   32.52 GFlops) 
+--------------------------------
+filter_packing_time: 4487708091, delta: 2ms
+filter_transform_time: 4487708125, delta: 34ms
+image_packing_time: 4487708283, delta: 158ms
+image_transform_time: 4487708580, delta: 297ms
+sgemm_time: 4487711009, delta: 2429ms
+output_transform_time: 4487711364, delta: 355ms
+output_unpacking_store_time: 4487711597, delta: 233ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487711638, delta: 2ms
+filter_transform_time: 4487711671, delta: 33ms
+image_packing_time: 4487711828, delta: 157ms
+image_transform_time: 4487712125, delta: 297ms
+sgemm_time: 4487713986, delta: 1861ms
+output_transform_time: 4487714341, delta: 355ms
+output_unpacking_store_time: 4487714541, delta: 200ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487714581, delta: 3ms
+filter_transform_time: 4487714609, delta: 28ms
+image_packing_time: 4487714766, delta: 157ms
+image_transform_time: 4487715063, delta: 297ms
+sgemm_time: 4487716925, delta: 1862ms
+output_transform_time: 4487717279, delta: 354ms
+output_unpacking_store_time: 4487717480, delta: 201ms
+--------------------------------
+Layer 8 :  Elapse time 3142.719030 ms. (   32.48 GFlops) 
+--------------------------------
+filter_packing_time: 4487717616, delta: 4ms
+filter_transform_time: 4487717684, delta: 68ms
+image_packing_time: 4487718001, delta: 317ms
+image_transform_time: 4487718595, delta: 594ms
+sgemm_time: 4487723404, delta: 4809ms
+output_transform_time: 4487723759, delta: 355ms
+output_unpacking_store_time: 4487723992, delta: 233ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487724050, delta: 4ms
+filter_transform_time: 4487724118, delta: 68ms
+image_packing_time: 4487724435, delta: 317ms
+image_transform_time: 4487725029, delta: 594ms
+sgemm_time: 4487729826, delta: 4797ms
+output_transform_time: 4487730181, delta: 355ms
+output_unpacking_store_time: 4487730382, delta: 201ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487730439, delta: 4ms
+filter_transform_time: 4487730507, delta: 68ms
+image_packing_time: 4487730824, delta: 317ms
+image_transform_time: 4487731418, delta: 594ms
+sgemm_time: 4487736228, delta: 4810ms
+output_transform_time: 4487736583, delta: 355ms
+output_unpacking_store_time: 4487736783, delta: 200ms
+--------------------------------
+Layer 9 :  Elapse time 6408.170621 ms. (   31.86 GFlops) 
+--------------------------------
+filter_packing_time: 4487736938, delta: 4ms
+filter_transform_time: 4487737006, delta: 68ms
+image_packing_time: 4487737323, delta: 317ms
+image_transform_time: 4487737917, delta: 594ms
+sgemm_time: 4487742719, delta: 4802ms
+output_transform_time: 4487743074, delta: 355ms
+output_unpacking_store_time: 4487743307, delta: 233ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487743365, delta: 5ms
+filter_transform_time: 4487743433, delta: 68ms
+image_packing_time: 4487743749, delta: 316ms
+image_transform_time: 4487744343, delta: 594ms
+sgemm_time: 4487749141, delta: 4798ms
+output_transform_time: 4487749496, delta: 355ms
+output_unpacking_store_time: 4487749697, delta: 201ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487749754, delta: 4ms
+filter_transform_time: 4487749822, delta: 68ms
+image_packing_time: 4487750139, delta: 317ms
+image_transform_time: 4487750733, delta: 594ms
+sgemm_time: 4487755532, delta: 4799ms
+output_transform_time: 4487755887, delta: 355ms
+output_unpacking_store_time: 4487756088, delta: 201ms
+--------------------------------
+Layer 10:  Elapse time 6402.249972 ms. (   31.89 GFlops) 
+--------------------------------
+filter_packing_time: 4487756242, delta: 4ms
+filter_transform_time: 4487756310, delta: 68ms
+image_packing_time: 4487756627, delta: 317ms
+image_transform_time: 4487757221, delta: 594ms
+sgemm_time: 4487762017, delta: 4796ms
+output_transform_time: 4487762372, delta: 355ms
+output_unpacking_store_time: 4487762605, delta: 233ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487762662, delta: 4ms
+filter_transform_time: 4487762730, delta: 68ms
+image_packing_time: 4487763047, delta: 317ms
+image_transform_time: 4487763641, delta: 594ms
+sgemm_time: 4487768438, delta: 4797ms
+output_transform_time: 4487768793, delta: 355ms
+output_unpacking_store_time: 4487768994, delta: 201ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487769051, delta: 4ms
+filter_transform_time: 4487769119, delta: 68ms
+image_packing_time: 4487769436, delta: 317ms
+image_transform_time: 4487770030, delta: 594ms
+sgemm_time: 4487774826, delta: 4796ms
+output_transform_time: 4487775181, delta: 355ms
+output_unpacking_store_time: 4487775382, delta: 201ms
+--------------------------------
+Layer 11:  Elapse time 6399.147987 ms. (   31.90 GFlops) 
+--------------------------------
+filter_packing_time: 4487775470, delta: 7ms
+filter_transform_time: 4487775538, delta: 68ms
+image_packing_time: 4487775596, delta: 58ms
+image_transform_time: 4487775705, delta: 109ms
+sgemm_time: 4487776587, delta: 882ms
+output_transform_time: 4487776652, delta: 65ms
+output_unpacking_store_time: 4487776696, delta: 44ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487776712, delta: 4ms
+filter_transform_time: 4487776780, delta: 68ms
+image_packing_time: 4487776837, delta: 57ms
+image_transform_time: 4487776946, delta: 109ms
+sgemm_time: 4487777830, delta: 884ms
+output_transform_time: 4487777888, delta: 58ms
+output_unpacking_store_time: 4487777925, delta: 37ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487777939, delta: 4ms
+filter_transform_time: 4487778007, delta: 68ms
+image_packing_time: 4487778064, delta: 57ms
+image_transform_time: 4487778173, delta: 109ms
+sgemm_time: 4487779056, delta: 883ms
+output_transform_time: 4487779104, delta: 48ms
+output_unpacking_store_time: 4487779141, delta: 37ms
+--------------------------------
+Layer 12:  Elapse time 1229.083300 ms. (   35.38 GFlops) 
+--------------------------------
+filter_packing_time: 4487779190, delta: 6ms
+filter_transform_time: 4487779258, delta: 68ms
+image_packing_time: 4487779316, delta: 58ms
+image_transform_time: 4487779425, delta: 109ms
+sgemm_time: 4487780306, delta: 881ms
+output_transform_time: 4487780365, delta: 59ms
+output_unpacking_store_time: 4487780408, delta: 43ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487780423, delta: 5ms
+filter_transform_time: 4487780490, delta: 67ms
+image_packing_time: 4487780548, delta: 58ms
+image_transform_time: 4487780657, delta: 109ms
+sgemm_time: 4487781539, delta: 882ms
+output_transform_time: 4487781587, delta: 48ms
+output_unpacking_store_time: 4487781624, delta: 37ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487781639, delta: 5ms
+filter_transform_time: 4487781706, delta: 67ms
+image_packing_time: 4487781764, delta: 58ms
+image_transform_time: 4487781873, delta: 109ms
+sgemm_time: 4487782754, delta: 881ms
+output_transform_time: 4487782802, delta: 48ms
+output_unpacking_store_time: 4487782839, delta: 37ms
+--------------------------------
+Layer 13:  Elapse time 1221.728643 ms. (   35.59 GFlops) 
+--------------------------------
+filter_packing_time: 4487782888, delta: 6ms
+filter_transform_time: 4487782956, delta: 68ms
+image_packing_time: 4487783014, delta: 58ms
+image_transform_time: 4487783123, delta: 109ms
+sgemm_time: 4487784004, delta: 881ms
+output_transform_time: 4487784062, delta: 58ms
+output_unpacking_store_time: 4487784106, delta: 44ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487784120, delta: 4ms
+filter_transform_time: 4487784188, delta: 68ms
+image_packing_time: 4487784245, delta: 57ms
+image_transform_time: 4487784354, delta: 109ms
+sgemm_time: 4487785237, delta: 883ms
+output_transform_time: 4487785285, delta: 48ms
+output_unpacking_store_time: 4487785322, delta: 37ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487785336, delta: 4ms
+filter_transform_time: 4487785404, delta: 68ms
+image_packing_time: 4487785461, delta: 57ms
+image_transform_time: 4487785570, delta: 109ms
+sgemm_time: 4487786454, delta: 884ms
+output_transform_time: 4487786501, delta: 47ms
+output_unpacking_store_time: 4487786538, delta: 37ms
+--------------------------------
+Layer 14:  Elapse time 1222.207705 ms. (   35.58 GFlops) 
+--------------------------------
+filter_packing_time: 4487786588, delta: 7ms
+filter_transform_time: 4487786655, delta: 67ms
+image_packing_time: 4487786713, delta: 58ms
+image_transform_time: 4487786822, delta: 109ms
+sgemm_time: 4487787703, delta: 881ms
+output_transform_time: 4487787761, delta: 58ms
+output_unpacking_store_time: 4487787805, delta: 44ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487787819, delta: 4ms
+filter_transform_time: 4487787887, delta: 68ms
+image_packing_time: 4487787944, delta: 57ms
+image_transform_time: 4487788053, delta: 109ms
+sgemm_time: 4487788937, delta: 884ms
+output_transform_time: 4487788985, delta: 48ms
+output_unpacking_store_time: 4487789022, delta: 37ms
+--------------------------------
+--------------------------------
+filter_packing_time: 4487789036, delta: 4ms
+filter_transform_time: 4487789104, delta: 68ms
+image_packing_time: 4487789161, delta: 57ms
+image_transform_time: 4487789270, delta: 109ms
+sgemm_time: 4487790152, delta: 882ms
+output_transform_time: 4487790200, delta: 48ms
+output_unpacking_store_time: 4487790237, delta: 37ms
+--------------------------------
+Layer 15:  Elapse time 1222.005288 ms. (   35.59 GFlops) 
+Total elapse time: 101.520648. (   22.11 GFlops) 
+
+ Performance counter stats for './winograd conf/vgg16.conf':
+
+        306,946.87 msec task-clock                #    1.000 CPUs utilized          
+             2,575      context-switches          #    8.389 /sec                   
+                 0      cpu-migrations            #    0.000 /sec                   
+        20,743,263      page-faults               #   67.579 K/sec                  
+   794,610,698,466      cycles                    #    2.589 GHz                      (38.46%)
+ 1,258,856,935,272      instructions              #    1.58  insn per cycle           (46.15%)
+   180,961,392,659      branches                  #  589.553 M/sec                    (53.85%)
+        99,445,335      branch-misses             #    0.05% of all branches          (61.54%)
+ 3,973,295,581,797      slots                     #   12.945 G/sec                    (69.23%)
+   375,477,292,131      topdown-retiring          #      9.0% retiring                (69.23%)
+ 2,867,005,439,414      topdown-bad-spec          #     68.5% bad speculation         (69.23%)
+    24,021,630,254      topdown-fe-bound          #      0.6% frontend bound          (69.23%)
+   921,181,510,227      topdown-be-bound          #     22.0% backend bound           (69.23%)
+   368,561,887,367      L1-dcache-loads           #    1.201 G/sec                    (69.23%)
+   100,264,584,017      L1-dcache-load-misses     #   27.20% of all L1-dcache accesses  (69.23%)
+       586,560,680      LLC-loads                 #    1.911 M/sec                    (69.23%)
+       122,566,543      LLC-load-misses           #   20.90% of all LL-cache accesses  (69.23%)
+   <not supported>      L1-icache-loads                                             
+       316,815,823      L1-icache-load-misses                                         (30.77%)
+   368,669,231,761      dTLB-loads                #    1.201 G/sec                    (30.77%)
+        34,713,966      dTLB-load-misses          #    0.01% of all dTLB cache accesses  (30.77%)
+   <not supported>      iTLB-loads                                                  
+           242,149      iTLB-load-misses                                              (30.77%)
+   <not supported>      L1-dcache-prefetches                                        
+   <not supported>      L1-dcache-prefetch-misses                                   
+
+     307.073263967 seconds time elapsed
+
+     274.735006000 seconds user
+      32.202975000 seconds sys
+
+

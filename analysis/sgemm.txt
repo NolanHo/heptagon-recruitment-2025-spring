@@ -1,0 +1,257 @@
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 3
+sgemm_time: 4674239274, delta: 99ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 3
+sgemm_time: 4674239572, delta: 99ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 3
+sgemm_time: 4674239852, delta: 99ms
+--------------------------------
+Layer 0 :  Elapse time 286.132336 ms. (   38.10 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 64
+sgemm_time: 4674240338, delta: 121ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 64
+sgemm_time: 4674240863, delta: 110ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 200704 x 64 x 64
+sgemm_time: 4674241369, delta: 108ms
+--------------------------------
+Layer 1 :  Elapse time 516.804059 ms. (  449.98 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 64
+sgemm_time: 4674241879, delta: 54ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 64
+sgemm_time: 4674242089, delta: 54ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 64
+sgemm_time: 4674242290, delta: 55ms
+--------------------------------
+Layer 2 :  Elapse time 203.390280 ms. (  561.43 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 128
+sgemm_time: 4674242589, delta: 68ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 128
+sgemm_time: 4674242866, delta: 64ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 50176 x 128 x 128
+sgemm_time: 4674243133, delta: 63ms
+--------------------------------
+Layer 3 :  Elapse time 271.231969 ms. (  842.01 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 128
+sgemm_time: 4674243404, delta: 35ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 128
+sgemm_time: 4674243522, delta: 34ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 128
+sgemm_time: 4674243631, delta: 33ms
+--------------------------------
+Layer 4 :  Elapse time 112.140338 ms. (  981.59 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674243827, delta: 76ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674243987, delta: 49ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674244142, delta: 49ms
+--------------------------------
+Layer 5 :  Elapse time 166.054328 ms. ( 1325.77 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674244337, delta: 49ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674244499, delta: 49ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674244655, delta: 49ms
+--------------------------------
+Layer 6 :  Elapse time 157.584985 ms. ( 1397.03 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674244851, delta: 50ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674245013, delta: 49ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 12544 x 256 x 256
+sgemm_time: 4674245168, delta: 48ms
+--------------------------------
+Layer 7 :  Elapse time 157.994668 ms. ( 1393.41 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 256
+sgemm_time: 4674245337, delta: 43ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 256
+sgemm_time: 4674245411, delta: 30ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 256
+sgemm_time: 4674245479, delta: 29ms
+--------------------------------
+Layer 8 :  Elapse time 75.482686 ms. ( 1352.26 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674245622, delta: 78ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674245764, delta: 80ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674245903, delta: 79ms
+--------------------------------
+Layer 9 :  Elapse time 139.950355 ms. ( 1458.70 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246065, delta: 81ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246206, delta: 79ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246346, delta: 80ms
+--------------------------------
+Layer 10:  Elapse time 140.620708 ms. ( 1451.74 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246506, delta: 80ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246647, delta: 79ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 3136 x 512 x 512
+sgemm_time: 4674246788, delta: 80ms
+--------------------------------
+Layer 11:  Elapse time 140.737057 ms. ( 1450.54 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674246928, delta: 33ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674246963, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674246995, delta: 16ms
+--------------------------------
+Layer 12:  Elapse time 45.585632 ms. (  953.95 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247028, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247061, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247092, delta: 15ms
+--------------------------------
+Layer 13:  Elapse time 31.664292 ms. ( 1373.36 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247129, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247161, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247193, delta: 16ms
+--------------------------------
+Layer 14:  Elapse time 31.738997 ms. ( 1370.13 GFlops) 
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247230, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247262, delta: 16ms
+--------------------------------
+--------------------------------
+num of sgemm times: 36, h: 6, w: 6
+M(num_tiles) x N(oc) x K(ic): 576 x 512 x 512
+sgemm_time: 4674247294, delta: 16ms
+--------------------------------
+Layer 15:  Elapse time 31.441689 ms. ( 1383.09 GFlops) 
+Total elapse time: 2.508554. (  894.94 GFlops) 

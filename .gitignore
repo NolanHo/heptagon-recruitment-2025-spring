@@ -1,2 +1,8 @@
 winograd
 .vscode
+vtune_result
+perf.data*
+slurm-output
+slurm-error
+out.perf
+jemalloc
